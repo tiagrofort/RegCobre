@@ -1,0 +1,204 @@
+export type UserRole = 'cobrador' | 'supervisor' | 'administrador';
+
+export interface User {
+  id: string;
+  name: string;
+  email: string;
+  role: UserRole;
+  roleTitle: string;
+  unit: string;
+  badgeCode: string;
+}
+
+export type DebtStatus =
+  | 'em_aberto'
+  | 'em_negociacao'
+  | 'promessa_firme'
+  | 'retorno_agendado'
+  | 'pago'
+  | 'quebrou_acordo'
+  | 'sem_contato';
+
+export type ContactChannel =
+  | 'Ligação'
+  | 'WhatsApp'
+  | 'Mensagem'
+  | 'Áudio'
+  | 'E-mail'
+  | 'Serasa'
+  | 'Visita'
+  | 'Outro';
+
+export type ContactResult =
+  | 'Pagou'
+  | 'Prometeu pagar'
+  | 'Vai pagar'
+  | 'Solicitou retorno'
+  | 'Não atende'
+  | 'Não responde'
+  | 'Não possui WhatsApp'
+  | 'Mensagem enviada'
+  | 'Áudio enviado'
+  | 'Ligação realizada'
+  | 'Contestação'
+  | 'Enviado para Serasa'
+  | 'Promessa Não Cumprida'
+  | 'Outro';
+
+export interface Debtor {
+  id: string;
+  erpCode: string;
+  name: string;
+  tradeName?: string;
+  cnpjCpf: string;
+  type: 'PJ' | 'PF';
+  status: 'Ativa' | 'Inativa' | 'Suspenso';
+  creditScore: number;
+  creditStatus: string;
+  mainContact: {
+    name: string;
+    role: string;
+    phoneFixed: string;
+    phoneMobile: string;
+    hasWhatsApp: boolean;
+    email: string;
+    address: string;
+  };
+  totalDebt: number;
+  debtsCount: number;
+}
+
+export interface PromiseRecord {
+  id: string;
+  debtId: string;
+  dateRegistered: string;
+  promisedDate: string;
+  promisedValue: number;
+  operatorName: string;
+  status: 'Pendente (Vigente)' | 'Não Cumprida / Quebrada' | 'Cumprida / Liquidada';
+  notes: string;
+}
+
+export interface ScheduledReturnRecord {
+  id: string;
+  debtId: string;
+  date: string;
+  time: string;
+  reason: string;
+  responsibleName: string;
+  status: 'Agendado' | 'Realizado' | 'Em Atraso';
+}
+
+export interface PaymentRecord {
+  id: string;
+  debtId: string;
+  date: string;
+  value: number;
+  method: string;
+  conciliationCode: string;
+  status: string;
+}
+
+export interface DebtHistoryItem {
+  id: string;
+  debtId: string;
+  timestamp: string;
+  dateFormatted: string;
+  timeFormatted: string;
+  operatorId: string;
+  operatorName: string;
+  operatorRole?: string;
+  isSystem?: boolean;
+  channel: ContactChannel;
+  result: ContactResult;
+  notes: string;
+  contactPerson?: string;
+  attachedPromise?: {
+    promisedDate: string;
+    promisedValue: number;
+    status: string;
+  };
+  attachedReturn?: {
+    returnDate: string;
+    returnTime: string;
+    reason: string;
+  };
+  attachedPayment?: {
+    paymentDate: string;
+    receivedValue: number;
+  };
+}
+
+export interface Debt {
+  id: string;
+  debtorId: string;
+  debtorName: string;
+  debtorTradeName?: string;
+  debtorCnpjCpf: string;
+  debtorType: 'PJ' | 'PF';
+  erpCode: string;
+  titleNumber: string;
+  installment: string; // e.g. "01/03"
+  invoiceNumber: string; // e.g. "NF-e 4492"
+  dueDate: string;
+  daysOverdue: number;
+  originalValue: number;
+  interestFine: number;
+  currentValue: number;
+  assignedTo: {
+    id: string;
+    name: string;
+    role: string;
+  };
+  custodyAudit?: {
+    transferredDate: string;
+    fromUser: string;
+    toUser: string;
+    auditHash: string;
+  };
+  status: DebtStatus;
+  statusLabel: string;
+  lastContact?: {
+    date: string;
+    time: string;
+    operatorName: string;
+    channel: ContactChannel;
+    result: ContactResult;
+    summary?: string;
+  };
+  nextReturn?: {
+    date: string;
+    time: string;
+    reason: string;
+    assignedToName: string;
+  };
+  activePromise?: {
+    dateRegistered: string;
+    promisedDate: string;
+    promisedValue: number;
+    operatorName: string;
+    status: 'vigente' | 'quebrada' | 'cumprida';
+    notes: string;
+  };
+  promises: PromiseRecord[];
+  scheduledReturns: ScheduledReturnRecord[];
+  payments: PaymentRecord[];
+  history: DebtHistoryItem[];
+}
+
+export interface ContactRegistrationPayload {
+  channel: ContactChannel;
+  result: ContactResult;
+  contactPerson: string;
+  notes: string;
+  hasPromise: boolean;
+  promisedDate?: string;
+  promisedValue?: number;
+  hasReturn: boolean;
+  returnDate?: string;
+  returnTime?: string;
+  returnReason?: string;
+  hasPayment: boolean;
+  paymentDate?: string;
+  receivedValue?: number;
+}

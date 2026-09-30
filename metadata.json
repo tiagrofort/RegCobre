@@ -1,0 +1,6 @@
+{
+  "name": "RegCobre — Gestão Integrada de Cobranças",
+  "description": "Sistema corporativo de gestão integrada de recuperação de crédito, cobrança, carteiras e conferência operacional.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

@@ -1,0 +1,1308 @@
+import {
+  Debt,
+  Debtor,
+  DebtHistoryItem,
+  ContactRegistrationPayload,
+  User,
+  PromiseRecord,
+  ScheduledReturnRecord,
+  PaymentRecord,
+} from '../types';
+
+// Initial Mock Debtors
+const INITIAL_DEBTORS: Debtor[] = [
+  {
+    id: 'd-andrade',
+    erpCode: '#9821',
+    name: 'Indústria Metalúrgica Andrade Ltda',
+    tradeName: 'Metalúrgica Andrade',
+    cnpjCpf: '14.892.301/0001-44',
+    type: 'PJ',
+    status: 'Ativa',
+    creditScore: 740,
+    creditStatus: 'Crédito ERP Suspenso',
+    mainContact: {
+      name: 'Dr. Marcos P. de Souza',
+      role: 'Diretor Financeiro / Sócio Administrador',
+      phoneFixed: '(11) 3452-8800 (Fixo)',
+      phoneMobile: '(11) 98822-1044 (Móvel)',
+      hasWhatsApp: true,
+      email: 'financeiro@metalurgicaandrade.com.br',
+      address: 'Av. Industrial, 4200 - Distrito Industrial - Guarulhos/SP - CEP: 07170-000',
+    },
+    totalDebt: 26850.0,
+    debtsCount: 3,
+  },
+  {
+    id: 'd-rocha-forte',
+    erpCode: '#3412',
+    name: 'Construtora Rocha Forte Ltda',
+    tradeName: 'Rocha Forte Engenharia',
+    cnpjCpf: '08.120.994/0001-90',
+    type: 'PJ',
+    status: 'Ativa',
+    creditScore: 680,
+    creditStatus: 'Em Restrição Comercial',
+    mainContact: {
+      name: 'Eng. Gilberto Rocha',
+      role: 'Gerente Administrativo',
+      phoneFixed: '(11) 3105-4422',
+      phoneMobile: '(11) 97100-3321',
+      hasWhatsApp: true,
+      email: 'financeiro@rochaforte.com.br',
+      address: 'Rua das Palmeiras, 850 - Bela Vista - São Paulo/SP',
+    },
+    totalDebt: 15750.0,
+    debtsCount: 1,
+  },
+  {
+    id: 'd-alvorada',
+    erpCode: '#1094',
+    name: 'Supermercados Alvorada Eireli',
+    tradeName: 'Supermercado Alvorada',
+    cnpjCpf: '02.441.563/0002-12',
+    type: 'PJ',
+    status: 'Ativa',
+    creditScore: 590,
+    creditStatus: 'Alerta de Inadimplência',
+    mainContact: {
+      name: 'Sr. Valdemar Alvorada',
+      role: 'Sócio Diretor',
+      phoneFixed: '(19) 3881-2200',
+      phoneMobile: '(19) 99233-4411',
+      hasWhatsApp: true,
+      email: 'contasapagar@superalvorada.com.br',
+      address: 'Av. Brasil Central, 1200 - Campinas/SP',
+    },
+    totalDebt: 25590.0,
+    debtsCount: 2,
+  },
+  {
+    id: 'd-brasil-norte',
+    erpCode: '#5519',
+    name: 'Distribuidora Brasil Norte PJ',
+    tradeName: 'Brasil Norte Distribuidora',
+    cnpjCpf: '19.330.122/0003-88',
+    type: 'PJ',
+    status: 'Ativa',
+    creditScore: 420,
+    creditStatus: 'Restrição Serasa Ativa',
+    mainContact: {
+      name: 'Claudio Ferreira',
+      role: 'Contador Responsável',
+      phoneFixed: '(91) 3222-1100',
+      phoneMobile: '(91) 98111-2299',
+      hasWhatsApp: true,
+      email: 'claudio@brasilnorte.com.br',
+      address: 'Rodovia BR 316, Km 4 - Ananindeua/PA',
+    },
+    totalDebt: 43290.0,
+    debtsCount: 1,
+  },
+  {
+    id: 'd-vale-verde',
+    erpCode: '#8129',
+    name: 'Transporte Vale Verde PJ',
+    tradeName: 'Vale Verde Logística',
+    cnpjCpf: '31.002.812/0001-09',
+    type: 'PJ',
+    status: 'Ativa',
+    creditScore: 610,
+    creditStatus: 'Regular com Atraso',
+    mainContact: {
+      name: 'Renata Lemos',
+      role: 'Supervisora Financeira',
+      phoneFixed: '(31) 3390-8800',
+      phoneMobile: '(31) 99882-7711',
+      hasWhatsApp: false,
+      email: 'renata@valeverdelog.com.br',
+      address: 'Distrito Industrial II - Contagem/MG',
+    },
+    totalDebt: 5630.0,
+    debtsCount: 1,
+  },
+  {
+    id: 'd-roberto-sampaio',
+    erpCode: '#7721',
+    name: 'Roberto Sampaio Pinto',
+    tradeName: 'Consultoria Empresarial',
+    cnpjCpf: '382.910.428-11',
+    type: 'PF',
+    status: 'Ativa',
+    creditScore: 710,
+    creditStatus: 'Cadastro Positivo',
+    mainContact: {
+      name: 'Roberto Sampaio',
+      role: 'Titular / Avalista',
+      phoneFixed: '(11) 2291-5500',
+      phoneMobile: '(11) 98222-4411',
+      hasWhatsApp: true,
+      email: 'roberto.sampaio@consultoria.com.br',
+      address: 'Rua Bela Cintra, 1420, Apto 82 - Jardins - São Paulo/SP',
+    },
+    totalDebt: 3345.0,
+    debtsCount: 1,
+  },
+  {
+    id: 'd-central-sul',
+    erpCode: '#4120',
+    name: 'Auto Peças Central Sul PJ',
+    tradeName: 'Central Sul Autopeças',
+    cnpjCpf: '05.811.234/0001-22',
+    type: 'PJ',
+    status: 'Ativa',
+    creditScore: 650,
+    creditStatus: 'Crédito Bloqueado',
+    mainContact: {
+      name: 'Maurício Santos',
+      role: 'Financeiro',
+      phoneFixed: '(41) 3344-9988',
+      phoneMobile: '(41) 99123-5566',
+      hasWhatsApp: true,
+      email: 'financeiro@centralsulauto.com.br',
+      address: 'Rua Marechal Floriano, 2200 - Curitiba/PR',
+    },
+    totalDebt: 12180.0,
+    debtsCount: 1,
+  },
+  {
+    id: 'd-translog',
+    erpCode: '#6210',
+    name: 'Translog Brasil Ltda',
+    tradeName: 'Translog Logística',
+    cnpjCpf: '14.281.992/0001-44',
+    type: 'PJ',
+    status: 'Ativa',
+    creditScore: 580,
+    creditStatus: 'Negociação Urgente',
+    mainContact: {
+      name: 'Roberto Camargo',
+      role: 'Gerente Financeiro',
+      phoneFixed: '(11) 3662-7700',
+      phoneMobile: '(11) 98765-4321',
+      hasWhatsApp: true,
+      email: 'roberto@translogbrasil.com.br',
+      address: 'Via Anhanguera, Km 28 - Jundiaí/SP',
+    },
+    totalDebt: 18450.0,
+    debtsCount: 1,
+  },
+  {
+    id: 'd-sao-lucas',
+    erpCode: '#7302',
+    name: 'Clínica Médica São Lucas',
+    tradeName: 'Clínica São Lucas',
+    cnpjCpf: '19.821.442/0001-05',
+    type: 'PJ',
+    status: 'Ativa',
+    creditScore: 820,
+    creditStatus: 'Bom Pagador Histórico',
+    mainContact: {
+      name: 'Dra. Mariana Lucas',
+      role: 'Diretora Médica / Sócia',
+      phoneFixed: '(11) 2110-3344',
+      phoneMobile: '(11) 99441-2233',
+      hasWhatsApp: true,
+      email: 'dra.mariana@clinicasaolucas.com.br',
+      address: 'Rua Itapeva, 500 - Bela Vista - São Paulo/SP',
+    },
+    totalDebt: 4850.0,
+    debtsCount: 1,
+  },
+];
+
+// Initial Debts Data
+const INITIAL_DEBTS: Debt[] = [
+  // 1. Indústria Metalúrgica Andrade - Título #10002 (Primary featured record)
+  {
+    id: '10002',
+    debtorId: 'd-andrade',
+    debtorName: 'Indústria Metalúrgica Andrade Ltda',
+    debtorTradeName: 'Metalúrgica Andrade',
+    debtorCnpjCpf: '14.892.301/0001-44',
+    debtorType: 'PJ',
+    erpCode: '#9821',
+    titleNumber: '#10002',
+    installment: '01/03',
+    invoiceNumber: 'NF-e 4492',
+    dueDate: '2024-09-12',
+    daysOverdue: 52,
+    originalValue: 8950.0,
+    interestFine: 420.1,
+    currentValue: 9370.1,
+    assignedTo: {
+      id: 'carlos-eduardo',
+      name: 'Carlos Eduardo',
+      role: 'Cobrador Sênior',
+    },
+    custodyAudit: {
+      transferredDate: '28/10/2024',
+      fromUser: 'Roberto S.',
+      toUser: 'Carlos Eduardo',
+      auditHash: '#9821-10002-BR',
+    },
+    status: 'em_negociacao',
+    statusLabel: 'Em Negociação / Promessa Pendente',
+    lastContact: {
+      date: '04/11/2024',
+      time: '11:15',
+      operatorName: 'Carlos Eduardo',
+      channel: 'Ligação',
+      result: 'Prometeu pagar',
+      summary: 'Por Carlos E. (Ligação)',
+    },
+    nextReturn: {
+      date: '2024-11-11',
+      time: '09:30',
+      reason: 'Acompanhar promessa e confirmação de TED',
+      assignedToName: 'Carlos Eduardo',
+    },
+    activePromise: {
+      dateRegistered: '04/11/2024 11:15',
+      promisedDate: '2024-11-18',
+      promisedValue: 9370.1,
+      operatorName: 'Carlos Eduardo',
+      status: 'vigente',
+      notes: 'Aguardando liberação de fluxo financeiro',
+    },
+    promises: [
+      {
+        id: 'p-1',
+        debtId: '10002',
+        dateRegistered: '04/11/2024 11:15',
+        promisedDate: '18/11/2024',
+        promisedValue: 9370.1,
+        operatorName: 'Carlos Eduardo',
+        status: 'Pendente (Vigente)',
+        notes: 'Aguardando liberação de fluxo financeiro',
+      },
+      {
+        id: 'p-0',
+        debtId: '10002',
+        dateRegistered: '15/10/2024 10:20',
+        promisedDate: '25/10/2024',
+        promisedValue: 8950.0,
+        operatorName: 'Roberto Silveira',
+        status: 'Não Cumprida / Quebrada',
+        notes: 'Devedor não efetuou PIX prometido no prazo',
+      },
+    ],
+    scheduledReturns: [
+      {
+        id: 'sr-1',
+        debtId: '10002',
+        date: '11/11/2024',
+        time: '09:30',
+        reason: 'Acompanhar promessa e confirmação de TED',
+        responsibleName: 'Carlos Eduardo',
+        status: 'Agendado',
+      },
+      {
+        id: 'sr-0',
+        debtId: '10002',
+        date: '25/10/2024',
+        time: '14:00',
+        reason: 'Cobrar comprovante PIX',
+        responsibleName: 'Roberto Silveira',
+        status: 'Realizado',
+      },
+    ],
+    payments: [],
+    history: [
+      {
+        id: 'h-1',
+        debtId: '10002',
+        timestamp: '2024-11-04T11:15:00',
+        dateFormatted: '04/11/2024',
+        timeFormatted: '11:15',
+        operatorId: 'carlos-eduardo',
+        operatorName: 'Carlos Eduardo',
+        operatorRole: 'Cobrador Sênior',
+        channel: 'Ligação',
+        result: 'Prometeu pagar',
+        notes:
+          'Conversado com Dr. Marcos (Diretor Financeiro). Informou que o fluxo de caixa regulariza nesta sexta-feira e efetuará a liquidação do título integralmente no valor de R$ 9.370,10 através de transferência bancária TED. Solicitou retorno formal na segunda-feira pela manhã para emissão de dados bancários de liquidação.',
+        contactPerson: 'Dr. Marcos (Diretor Financeiro)',
+        attachedPromise: {
+          promisedDate: '18/11/2024',
+          promisedValue: 9370.1,
+          status: 'Vigente',
+        },
+        attachedReturn: {
+          returnDate: '11/11/2024',
+          returnTime: '09:30',
+          reason: 'Confirmação TED',
+        },
+      },
+      {
+        id: 'h-2',
+        debtId: '10002',
+        timestamp: '2024-10-28T16:40:00',
+        dateFormatted: '28/10/2024',
+        timeFormatted: '16:40',
+        operatorId: 'carlos-eduardo',
+        operatorName: 'Carlos Eduardo',
+        channel: 'WhatsApp',
+        result: 'Mensagem enviada',
+        notes:
+          'Cobrança transferida pelo supervisor Marcos Vinicius de Roberto para Carlos Eduardo. Realizado primeiro contato via WhatsApp oficial apresentando o novo responsável pela carteira e solicitando posicionamento acerca da quebra do acordo anterior. Mensagem entregue com confirmação de leitura.',
+      },
+      {
+        id: 'h-3',
+        debtId: '10002',
+        timestamp: '2024-10-25T17:00:00',
+        dateFormatted: '25/10/2024',
+        timeFormatted: '17:00',
+        operatorId: 'roberto-silveira',
+        operatorName: 'Roberto Silveira (Antigo Cobrador)',
+        isSystem: true,
+        channel: 'Outro',
+        result: 'Promessa Não Cumprida',
+        notes:
+          'Pagamento prometido para 25/10/2024 no valor de R$ 8.950,00 não foi identificado no extrato conciliado do ERP TOTVS. Notificação de descumprimento disparada para a gerência de cobrança e sinalizador de quebra de acordo vinculado à ficha.',
+      },
+      {
+        id: 'h-4',
+        debtId: '10002',
+        timestamp: '2024-10-15T10:20:00',
+        dateFormatted: '15/10/2024',
+        timeFormatted: '10:20',
+        operatorId: 'roberto-silveira',
+        operatorName: 'Roberto Silveira (Antigo Cobrador)',
+        channel: 'Ligação',
+        result: 'Prometeu pagar',
+        notes:
+          'Contato estabelecido com setor de contas a pagar da Indústria Metalúrgica Andrade. O responsável alegou atraso de recebíveis de clientes do setor automotivo e firmou compromisso de liquidação até o dia 25/10. Registrada promessa no valor do principal.',
+      },
+    ],
+  },
+
+  // 1b. Indústria Metalúrgica Andrade - Título #10003 (Parc 02/03)
+  {
+    id: '10003',
+    debtorId: 'd-andrade',
+    debtorName: 'Indústria Metalúrgica Andrade Ltda',
+    debtorTradeName: 'Metalúrgica Andrade',
+    debtorCnpjCpf: '14.892.301/0001-44',
+    debtorType: 'PJ',
+    erpCode: '#9821',
+    titleNumber: '#10003',
+    installment: '02/03',
+    invoiceNumber: 'NF-e 4492',
+    dueDate: '2024-10-12',
+    daysOverdue: 22,
+    originalValue: 8950.0,
+    interestFine: 180.0,
+    currentValue: 9130.0,
+    assignedTo: {
+      id: 'carlos-eduardo',
+      name: 'Carlos Eduardo',
+      role: 'Cobrador Sênior',
+    },
+    status: 'sem_contato',
+    statusLabel: 'Aguardando Contato',
+    promises: [],
+    scheduledReturns: [],
+    payments: [],
+    history: [
+      {
+        id: 'h-10003-1',
+        debtId: '10003',
+        timestamp: '2024-10-28T16:45:00',
+        dateFormatted: '28/10/2024',
+        timeFormatted: '16:45',
+        operatorId: 'carlos-eduardo',
+        operatorName: 'Carlos Eduardo',
+        channel: 'WhatsApp',
+        result: 'Mensagem enviada',
+        notes: 'Disparada notificação preventiva de vencimento da parcela 02.',
+      },
+    ],
+  },
+
+  // 1c. Indústria Metalúrgica Andrade - Título #10004 (Parc 03/03)
+  {
+    id: '10004',
+    debtorId: 'd-andrade',
+    debtorName: 'Indústria Metalúrgica Andrade Ltda',
+    debtorTradeName: 'Metalúrgica Andrade',
+    debtorCnpjCpf: '14.892.301/0001-44',
+    debtorType: 'PJ',
+    erpCode: '#9821',
+    titleNumber: '#10004',
+    installment: '03/03',
+    invoiceNumber: 'NF-e 4492',
+    dueDate: '2024-11-12',
+    daysOverdue: 0,
+    originalValue: 8950.0,
+    interestFine: 0,
+    currentValue: 8950.0,
+    assignedTo: {
+      id: 'carlos-eduardo',
+      name: 'Carlos Eduardo',
+      role: 'Cobrador Sênior',
+    },
+    status: 'em_aberto',
+    statusLabel: 'A Vencer (12/11) - Carteira Regular',
+    promises: [],
+    scheduledReturns: [],
+    payments: [],
+    history: [],
+  },
+
+  // 2. Construtora Rocha Forte - Título #10001
+  {
+    id: '10001',
+    debtorId: 'd-rocha-forte',
+    debtorName: 'Construtora Rocha Forte Ltda',
+    debtorTradeName: 'Rocha Forte Engenharia',
+    debtorCnpjCpf: '08.120.994/0001-90',
+    debtorType: 'PJ',
+    erpCode: '#3412',
+    titleNumber: '#10001',
+    installment: '02/05',
+    invoiceNumber: 'NF-e 3810',
+    dueDate: '2024-09-15',
+    daysOverdue: 49,
+    originalValue: 14500.0,
+    interestFine: 1250.0,
+    currentValue: 15750.0,
+    assignedTo: {
+      id: 'maria-oliveira',
+      name: 'Maria Oliveira',
+      role: 'Cobradora Pleno',
+    },
+    status: 'pago',
+    statusLabel: 'Pago / Liquidado',
+    lastContact: {
+      date: '04/11/2024',
+      time: '10:40',
+      operatorName: 'Maria Oliveira',
+      channel: 'Ligação',
+      result: 'Pagou',
+      summary: 'Por Maria Oliveira (Ligação)',
+    },
+    promises: [
+      {
+        id: 'p-rocha-1',
+        debtId: '10001',
+        dateRegistered: '01/11/2024',
+        promisedDate: '04/11/2024',
+        promisedValue: 14500.0,
+        operatorName: 'Maria Oliveira',
+        status: 'Cumprida / Liquidada',
+        notes: 'Comprovante TED enviado e validado.',
+      },
+    ],
+    scheduledReturns: [],
+    payments: [
+      {
+        id: 'pay-1',
+        debtId: '10001',
+        date: '04/11/2024',
+        value: 14500.0,
+        method: 'TED Conciliado',
+        conciliationCode: 'TOTVS-TED-98214',
+        status: 'Liquidado',
+      },
+    ],
+    history: [
+      {
+        id: 'h-rocha-1',
+        debtId: '10001',
+        timestamp: '2024-11-04T10:40:00',
+        dateFormatted: '04/11/2024',
+        timeFormatted: '10:40',
+        operatorId: 'maria-oliveira',
+        operatorName: 'Maria Oliveira',
+        channel: 'Ligação',
+        result: 'Pagou',
+        notes: 'Confirmado recebimento de TED no valor de R$ 14.500,00 conciliado no ERP TOTVS.',
+        attachedPayment: {
+          paymentDate: '04/11/2024',
+          receivedValue: 14500.0,
+        },
+      },
+    ],
+  },
+
+  // 3. Supermercados Alvorada - Título #10045
+  {
+    id: '10045',
+    debtorId: 'd-alvorada',
+    debtorName: 'Supermercados Alvorada Eireli',
+    debtorTradeName: 'Supermercado Alvorada',
+    debtorCnpjCpf: '02.441.563/0002-12',
+    debtorType: 'PJ',
+    erpCode: '#1094',
+    titleNumber: '#10045',
+    installment: 'Única',
+    invoiceNumber: 'NF-e 8812',
+    dueDate: '2024-09-28',
+    daysOverdue: 36,
+    originalValue: 23180.0,
+    interestFine: 2410.0,
+    currentValue: 25590.0,
+    assignedTo: {
+      id: 'carlos-eduardo',
+      name: 'Carlos Eduardo',
+      role: 'Cobrador Sênior',
+    },
+    status: 'retorno_agendado',
+    statusLabel: 'Retorno Agendado',
+    lastContact: {
+      date: '04/11/2024',
+      time: '09:15',
+      operatorName: 'Carlos Eduardo',
+      channel: 'Ligação',
+      result: 'Solicitou retorno',
+      summary: 'Por Carlos E. (Ligação)',
+    },
+    nextReturn: {
+      date: '2024-11-04',
+      time: '14:00',
+      reason: 'Proposta de desconto de 8% à vista autorizada pela diretoria.',
+      assignedToName: 'Carlos Eduardo',
+    },
+    promises: [],
+    scheduledReturns: [
+      {
+        id: 'sr-alv-1',
+        debtId: '10045',
+        date: '04/11/2024',
+        time: '14:00',
+        reason: 'Alinhamento com Sr. Valdemar sobre quitação à vista.',
+        responsibleName: 'Carlos Eduardo',
+        status: 'Agendado',
+      },
+    ],
+    payments: [],
+    history: [
+      {
+        id: 'h-alv-1',
+        debtId: '10045',
+        timestamp: '2024-11-04T09:15:00',
+        dateFormatted: '04/11/2024',
+        timeFormatted: '09:15',
+        operatorId: 'carlos-eduardo',
+        operatorName: 'Carlos Eduardo',
+        channel: 'Ligação',
+        result: 'Solicitou retorno',
+        notes:
+          'Contato com secretária do Sr. Valdemar. Ele solicitou ligar pontualmente às 14h para avaliar proposta de liquidação à vista.',
+        attachedReturn: {
+          returnDate: '04/11/2024',
+          returnTime: '14:00',
+          reason: 'Falar com sócio Valdemar',
+        },
+      },
+    ],
+  },
+
+  // 4. Distribuidora Brasil Norte - Título #09871
+  {
+    id: '09871',
+    debtorId: 'd-brasil-norte',
+    debtorName: 'Distribuidora Brasil Norte PJ',
+    debtorTradeName: 'Brasil Norte Distribuidora',
+    debtorCnpjCpf: '19.330.122/0003-88',
+    debtorType: 'PJ',
+    erpCode: '#5519',
+    titleNumber: '#09871',
+    installment: '03/03',
+    invoiceNumber: 'NF-e 2911',
+    dueDate: '2024-08-05',
+    daysOverdue: 90,
+    originalValue: 38400.0,
+    interestFine: 4890.0,
+    currentValue: 43290.0,
+    assignedTo: {
+      id: 'roberto-silveira',
+      name: 'Roberto Silveira',
+      role: 'Cobrador Júnior',
+    },
+    status: 'quebrou_acordo',
+    statusLabel: 'Quebrou Acordo / Promessa Não Cumprida',
+    lastContact: {
+      date: '04/11/2024',
+      time: '09:50',
+      operatorName: 'Roberto Silveira',
+      channel: 'Ligação',
+      result: 'Promessa Não Cumprida',
+      summary: 'Roberto Silveira (Sem Retorno)',
+    },
+    nextReturn: {
+      date: '2024-11-05',
+      time: '14:00',
+      reason: 'Repactuação urgente - Reacionar devedor.',
+      assignedToName: 'Roberto Silveira',
+    },
+    promises: [
+      {
+        id: 'p-bn-1',
+        debtId: '09871',
+        dateRegistered: '28/10/2024',
+        promisedDate: '03/11/2024',
+        promisedValue: 38400.0,
+        operatorName: 'Roberto Silveira',
+        status: 'Não Cumprida / Quebrada',
+        notes: 'Promessa de R$ 38.400 não cumprida em 03/11.',
+      },
+    ],
+    scheduledReturns: [],
+    payments: [],
+    history: [
+      {
+        id: 'h-bn-1',
+        debtId: '09871',
+        timestamp: '2024-11-04T09:50:00',
+        dateFormatted: '04/11/2024',
+        timeFormatted: '09:50',
+        operatorId: 'roberto-silveira',
+        operatorName: 'Roberto Silveira',
+        channel: 'Ligação',
+        result: 'Promessa Não Cumprida',
+        notes: 'Constatada quebra de acordo. Ligado para cobrança sem atendimento.',
+      },
+    ],
+  },
+
+  // 5. Transporte Vale Verde - Título #10219
+  {
+    id: '10219',
+    debtorId: 'd-vale-verde',
+    debtorName: 'Transporte Vale Verde PJ',
+    debtorTradeName: 'Vale Verde Logística',
+    debtorCnpjCpf: '31.002.812/0001-09',
+    debtorType: 'PJ',
+    erpCode: '#8129',
+    titleNumber: '#10219',
+    installment: '01/01',
+    invoiceNumber: 'NF-e 7731',
+    dueDate: '2024-10-20',
+    daysOverdue: 14,
+    originalValue: 5420.0,
+    interestFine: 210.0,
+    currentValue: 5630.0,
+    assignedTo: {
+      id: 'juliana-mendes',
+      name: 'Juliana Mendes',
+      role: 'Cobradora',
+    },
+    status: 'sem_contato',
+    statusLabel: 'Sem Contato Recente',
+    lastContact: {
+      date: '03/11/2024',
+      time: '16:20',
+      operatorName: 'Juliana Mendes',
+      channel: 'Ligação',
+      result: 'Não atende',
+      summary: 'Juliana M. (Caixa Postal)',
+    },
+    promises: [],
+    scheduledReturns: [],
+    payments: [],
+    history: [
+      {
+        id: 'h-vv-1',
+        debtId: '10219',
+        timestamp: '2024-11-03T16:20:00',
+        dateFormatted: '03/11/2024',
+        timeFormatted: '16:20',
+        operatorId: 'juliana-mendes',
+        operatorName: 'Juliana Mendes',
+        channel: 'Ligação',
+        result: 'Não atende',
+        notes: 'Ligação realizada para financeiro. Caixa postal.',
+      },
+    ],
+  },
+
+  // 6. Roberto Sampaio Pinto - Título #10304
+  {
+    id: '10304',
+    debtorId: 'd-roberto-sampaio',
+    debtorName: 'Roberto Sampaio Pinto',
+    debtorTradeName: 'Consultoria Empresarial',
+    debtorCnpjCpf: '382.910.428-11',
+    debtorType: 'PF',
+    erpCode: '#7721',
+    titleNumber: '#10304',
+    installment: '04/06',
+    invoiceNumber: 'NF-e 9102',
+    dueDate: '2024-10-10',
+    daysOverdue: 24,
+    originalValue: 3200.0,
+    interestFine: 145.0,
+    currentValue: 3345.0,
+    assignedTo: {
+      id: 'carlos-eduardo',
+      name: 'Carlos Eduardo',
+      role: 'Cobrador Sênior',
+    },
+    status: 'promessa_firme',
+    statusLabel: 'Promessa Firme',
+    lastContact: {
+      date: '03/11/2024',
+      time: '14:10',
+      operatorName: 'Carlos Eduardo',
+      channel: 'WhatsApp',
+      result: 'Prometeu pagar',
+      summary: 'Carlos E. (WhatsApp)',
+    },
+    nextReturn: {
+      date: '2024-11-06',
+      time: '10:00',
+      reason: 'Acompanhar pagamento via PIX.',
+      assignedToName: 'Carlos Eduardo',
+    },
+    activePromise: {
+      dateRegistered: '03/11/2024',
+      promisedDate: '2024-11-06',
+      promisedValue: 3200.0,
+      operatorName: 'Carlos Eduardo',
+      status: 'vigente',
+      notes: 'Acordo firmado via WhatsApp.',
+    },
+    promises: [
+      {
+        id: 'p-rsp-1',
+        debtId: '10304',
+        dateRegistered: '03/11/2024',
+        promisedDate: '06/11/2024',
+        promisedValue: 3200.0,
+        operatorName: 'Carlos Eduardo',
+        status: 'Pendente (Vigente)',
+        notes: 'Acordo firmado via WhatsApp.',
+      },
+    ],
+    scheduledReturns: [],
+    payments: [],
+    history: [
+      {
+        id: 'h-rsp-1',
+        debtId: '10304',
+        timestamp: '2024-11-03T14:10:00',
+        dateFormatted: '03/11/2024',
+        timeFormatted: '14:10',
+        operatorId: 'carlos-eduardo',
+        operatorName: 'Carlos Eduardo',
+        channel: 'WhatsApp',
+        result: 'Prometeu pagar',
+        notes: 'Cliente confirmou que realizará transferência PIX de R$ 3.200 até quarta-feira.',
+        attachedPromise: {
+          promisedDate: '06/11/2024',
+          promisedValue: 3200.0,
+          status: 'Vigente',
+        },
+      },
+    ],
+  },
+
+  // 7. Auto Peças Central Sul - Título #10190
+  {
+    id: '10190',
+    debtorId: 'd-central-sul',
+    debtorName: 'Auto Peças Central Sul PJ',
+    debtorTradeName: 'Central Sul Autopeças',
+    debtorCnpjCpf: '05.811.234/0001-22',
+    debtorType: 'PJ',
+    erpCode: '#4120',
+    titleNumber: '#10190',
+    installment: '01/02',
+    invoiceNumber: 'NF-e 6122',
+    dueDate: '2024-09-19',
+    daysOverdue: 45,
+    originalValue: 11290.0,
+    interestFine: 890.0,
+    currentValue: 12180.0,
+    assignedTo: {
+      id: 'maria-oliveira',
+      name: 'Maria Oliveira',
+      role: 'Cobradora Pleno',
+    },
+    status: 'pago',
+    statusLabel: 'Pago / Liquidado',
+    lastContact: {
+      date: '03/11/2024',
+      time: '11:30',
+      operatorName: 'Maria Oliveira',
+      channel: 'Ligação',
+      result: 'Pagou',
+      summary: 'Maria Oliveira (Boleto Pago)',
+    },
+    promises: [],
+    scheduledReturns: [],
+    payments: [
+      {
+        id: 'pay-cs-1',
+        debtId: '10190',
+        date: '03/11/2024',
+        value: 11290.0,
+        method: 'Boleto Bancário',
+        conciliationCode: 'TOTVS-BOL-44120',
+        status: 'Liquidado',
+      },
+    ],
+    history: [
+      {
+        id: 'h-cs-1',
+        debtId: '10190',
+        timestamp: '2024-11-03T11:30:00',
+        dateFormatted: '03/11/2024',
+        timeFormatted: '11:30',
+        operatorId: 'maria-oliveira',
+        operatorName: 'Maria Oliveira',
+        channel: 'Ligação',
+        result: 'Pagou',
+        notes: 'Pagamento conciliado via Boleto Bancário.',
+        attachedPayment: {
+          paymentDate: '03/11/2024',
+          receivedValue: 11290.0,
+        },
+      },
+    ],
+  },
+
+  // 8. Translog Brasil Ltda - Título #10482
+  {
+    id: '10482',
+    debtorId: 'd-translog',
+    debtorName: 'Translog Brasil Ltda',
+    debtorTradeName: 'Translog Logística',
+    debtorCnpjCpf: '14.281.992/0001-44',
+    debtorType: 'PJ',
+    erpCode: '#6210',
+    titleNumber: '#10482',
+    installment: '01/02',
+    invoiceNumber: 'NF-e 9918',
+    dueDate: '2024-10-14',
+    daysOverdue: 21,
+    originalValue: 18450.0,
+    interestFine: 520.0,
+    currentValue: 18970.0,
+    assignedTo: {
+      id: 'carlos-eduardo',
+      name: 'Carlos Eduardo',
+      role: 'Cobrador Sênior',
+    },
+    status: 'retorno_agendado',
+    statusLabel: 'Retorno Agendado (Urgente)',
+    lastContact: {
+      date: '03/11/2024',
+      time: '16:45',
+      operatorName: 'Carlos Eduardo',
+      channel: 'Ligação',
+      result: 'Solicitou retorno',
+      summary: 'Boleto minuta encaminhado',
+    },
+    nextReturn: {
+      date: '2024-11-04',
+      time: '09:30',
+      reason:
+        'Retornar com financeiro Roberto para confirmar aprovação do boleto parcelado com entrada de 30%.',
+      assignedToName: 'Carlos Eduardo',
+    },
+    promises: [],
+    scheduledReturns: [
+      {
+        id: 'sr-trans-1',
+        debtId: '10482',
+        date: '04/11/2024',
+        time: '09:30',
+        reason: 'Confirmar boleto parcelado',
+        responsibleName: 'Carlos Eduardo',
+        status: 'Agendado',
+      },
+    ],
+    payments: [],
+    history: [
+      {
+        id: 'h-trans-1',
+        debtId: '10482',
+        timestamp: '2024-11-03T16:45:00',
+        dateFormatted: '03/11/2024',
+        timeFormatted: '16:45',
+        operatorId: 'carlos-eduardo',
+        operatorName: 'Carlos Eduardo',
+        channel: 'Ligação',
+        result: 'Solicitou retorno',
+        notes:
+          'Roberto solicitou contato impreterivelmente pela manhã para formalizar acordo com entrada.',
+      },
+    ],
+  },
+
+  // 9. Clínica Médica São Lucas - Título #10555
+  {
+    id: '10555',
+    debtorId: 'd-sao-lucas',
+    debtorName: 'Clínica Médica São Lucas',
+    debtorTradeName: 'Clínica São Lucas',
+    debtorCnpjCpf: '19.821.442/0001-05',
+    debtorType: 'PJ',
+    erpCode: '#7302',
+    titleNumber: '#10555',
+    installment: 'Única',
+    invoiceNumber: 'NF-e 1022',
+    dueDate: '2024-10-18',
+    daysOverdue: 17,
+    originalValue: 4850.0,
+    interestFine: 120.0,
+    currentValue: 4970.0,
+    assignedTo: {
+      id: 'carlos-eduardo',
+      name: 'Carlos Eduardo',
+      role: 'Cobrador Sênior',
+    },
+    status: 'retorno_agendado',
+    statusLabel: 'Retorno Agendado',
+    lastContact: {
+      date: '31/10/2024',
+      time: '11:20',
+      operatorName: 'Carlos Eduardo',
+      channel: 'Ligação',
+      result: 'Solicitou retorno',
+      summary: 'Devedora em atendimento',
+    },
+    nextReturn: {
+      date: '2024-11-04',
+      time: '14:00',
+      reason:
+        'Retornar pontualmente às 14h para falar com Dra. Mariana durante intervalo de consultas.',
+      assignedToName: 'Carlos Eduardo',
+    },
+    promises: [],
+    scheduledReturns: [
+      {
+        id: 'sr-sl-1',
+        debtId: '10555',
+        date: '04/11/2024',
+        time: '14:00',
+        reason: 'Definição de pagamento via PIX.',
+        responsibleName: 'Carlos Eduardo',
+        status: 'Agendado',
+      },
+    ],
+    payments: [],
+    history: [
+      {
+        id: 'h-sl-1',
+        debtId: '10555',
+        timestamp: '2024-10-31T11:20:00',
+        dateFormatted: '31/10/2024',
+        timeFormatted: '11:20',
+        operatorId: 'carlos-eduardo',
+        operatorName: 'Carlos Eduardo',
+        channel: 'Ligação',
+        result: 'Solicitou retorno',
+        notes: 'Secretária informou que Dra. Mariana só atende cobrança no intervalo das 14h.',
+      },
+    ],
+  },
+];
+
+// Reactive in-memory state
+let debtsState: Debt[] = JSON.parse(JSON.stringify(INITIAL_DEBTS));
+let debtorsState: Debtor[] = JSON.parse(JSON.stringify(INITIAL_DEBTORS));
+
+type Listener = () => void;
+const listeners = new Set<Listener>();
+
+function notifyListeners() {
+  listeners.forEach((l) => l());
+}
+
+export const debtService = {
+  subscribe(listener: Listener) {
+    listeners.add(listener);
+    return () => {
+      listeners.delete(listener);
+    };
+  },
+
+  getAllDebts(): Debt[] {
+    return [...debtsState];
+  },
+
+  getDebtsByAssignee(userId: string): Debt[] {
+    return debtsState.filter(
+      (d) =>
+        d.assignedTo.id.toLowerCase() === userId.toLowerCase() ||
+        d.assignedTo.name.toLowerCase().includes(userId.toLowerCase())
+    );
+  },
+
+  getDebtById(id: string): Debt | undefined {
+    return debtsState.find((d) => d.id === id);
+  },
+
+  getAllDebtors(): Debtor[] {
+    return [...debtorsState];
+  },
+
+  getDebtorById(id: string): Debtor | undefined {
+    return debtorsState.find((d) => d.id === id);
+  },
+
+  getDebtsByDebtorId(debtorId: string): Debt[] {
+    return debtsState.filter((d) => d.debtorId === debtorId);
+  },
+
+  /**
+   * Registers a new contact/interaction on a debt.
+   * Crucial: uses `currentUser.name` automatically - NEVER asks the operator for their name!
+   */
+  registerContact(
+    debtId: string,
+    payload: ContactRegistrationPayload,
+    currentUser: User
+  ): { success: boolean; debt?: Debt; nextDebtId?: string } {
+    const debtIndex = debtsState.findIndex((d) => d.id === debtId);
+    if (debtIndex === -1) {
+      return { success: false };
+    }
+
+    const currentDebt = debtsState[debtIndex];
+    const now = new Date();
+    const dateFormatted = `${String(now.getDate()).padStart(2, '0')}/${String(
+      now.getMonth() + 1
+    ).padStart(2, '0')}/${now.getFullYear()}`;
+    const timeFormatted = `${String(now.getHours()).padStart(2, '0')}:${String(
+      now.getMinutes()
+    ).padStart(2, '0')}`;
+
+    // Create history item
+    const newHistoryItem: DebtHistoryItem = {
+      id: `h-${Date.now()}`,
+      debtId: currentDebt.id,
+      timestamp: now.toISOString(),
+      dateFormatted,
+      timeFormatted,
+      operatorId: currentUser.id,
+      operatorName: currentUser.name,
+      operatorRole: currentUser.roleTitle,
+      channel: payload.channel,
+      result: payload.result,
+      contactPerson: payload.contactPerson || undefined,
+      notes: payload.notes || 'Registro de contato efetuado.',
+    };
+
+    // Update last contact
+    currentDebt.lastContact = {
+      date: dateFormatted,
+      time: timeFormatted,
+      operatorName: currentUser.name,
+      channel: payload.channel,
+      result: payload.result,
+      summary: `Por ${currentUser.name} (${payload.channel})`,
+    };
+
+    // If promise attached
+    if (payload.hasPromise && payload.promisedValue && payload.promisedDate) {
+      const promisedVal =
+        typeof payload.promisedValue === 'string'
+          ? parseFloat(String(payload.promisedValue).replace(',', '.'))
+          : payload.promisedValue;
+
+      const newPromise: PromiseRecord = {
+        id: `p-${Date.now()}`,
+        debtId: currentDebt.id,
+        dateRegistered: `${dateFormatted} ${timeFormatted}`,
+        promisedDate: payload.promisedDate,
+        promisedValue: promisedVal,
+        operatorName: currentUser.name,
+        status: 'Pendente (Vigente)',
+        notes: payload.notes || 'Promessa vinculada pelo operador.',
+      };
+
+      currentDebt.promises.unshift(newPromise);
+      currentDebt.activePromise = {
+        dateRegistered: `${dateFormatted} ${timeFormatted}`,
+        promisedDate: payload.promisedDate,
+        promisedValue: promisedVal,
+        operatorName: currentUser.name,
+        status: 'vigente',
+        notes: payload.notes,
+      };
+
+      currentDebt.status = 'promessa_firme';
+      currentDebt.statusLabel = 'Promessa Vigente / PTP Registrada';
+
+      newHistoryItem.attachedPromise = {
+        promisedDate: payload.promisedDate,
+        promisedValue: promisedVal,
+        status: 'Vigente',
+      };
+    }
+
+    // If payment attached or result is 'Pagou'
+    if (payload.hasPayment || payload.result === 'Pagou') {
+      const payVal = payload.receivedValue
+        ? typeof payload.receivedValue === 'string'
+          ? parseFloat(String(payload.receivedValue).replace(',', '.'))
+          : payload.receivedValue
+        : currentDebt.currentValue;
+
+      const newPayment: PaymentRecord = {
+        id: `pay-${Date.now()}`,
+        debtId: currentDebt.id,
+        date: payload.paymentDate || dateFormatted,
+        value: payVal,
+        method: payload.channel === 'WhatsApp' ? 'PIX' : 'Transferência TED',
+        conciliationCode: `TOTVS-BAIXA-${Math.floor(10000 + Math.random() * 90000)}`,
+        status: 'Liquidado',
+      };
+
+      currentDebt.payments.unshift(newPayment);
+      currentDebt.status = 'pago';
+      currentDebt.statusLabel = 'Pago / Liquidado';
+
+      newHistoryItem.attachedPayment = {
+        paymentDate: payload.paymentDate || dateFormatted,
+        receivedValue: payVal,
+      };
+    }
+
+    // If scheduled return attached
+    if (payload.hasReturn && payload.returnDate && payload.returnTime) {
+      const newReturn: ScheduledReturnRecord = {
+        id: `sr-${Date.now()}`,
+        debtId: currentDebt.id,
+        date: payload.returnDate,
+        time: payload.returnTime,
+        reason: payload.returnReason || 'Retorno agendado',
+        responsibleName: currentUser.name,
+        status: 'Agendado',
+      };
+
+      currentDebt.scheduledReturns.unshift(newReturn);
+      currentDebt.nextReturn = {
+        date: payload.returnDate,
+        time: payload.returnTime,
+        reason: payload.returnReason || 'Retorno agendado',
+        assignedToName: currentUser.name,
+      };
+
+      if (currentDebt.status !== 'pago' && currentDebt.status !== 'promessa_firme') {
+        currentDebt.status = 'retorno_agendado';
+        currentDebt.statusLabel = 'Retorno Agendado';
+      }
+
+      newHistoryItem.attachedReturn = {
+        returnDate: payload.returnDate,
+        returnTime: payload.returnTime,
+        reason: payload.returnReason || 'Retorno agendado',
+      };
+    }
+
+    // If other status outcomes
+    if (payload.result === 'Não atende' || payload.result === 'Não responde') {
+      if (currentDebt.status !== 'promessa_firme' && currentDebt.status !== 'pago') {
+        currentDebt.status = 'sem_contato';
+        currentDebt.statusLabel = 'Sem Contato / Não Atendeu';
+      }
+    } else if (payload.result === 'Promessa Não Cumprida') {
+      currentDebt.status = 'quebrou_acordo';
+      currentDebt.statusLabel = 'Promessa Não Cumprida / Quebrada';
+    } else if (payload.result === 'Contestação') {
+      currentDebt.status = 'em_negociacao';
+      currentDebt.statusLabel = 'Em Contestação Comercial';
+    }
+
+    // Add to beginning of history
+    currentDebt.history.unshift(newHistoryItem);
+
+    // Find next debt for "Salvar e ir para próxima cobrança"
+    const nextDebt = debtsState[(debtIndex + 1) % debtsState.length];
+
+    notifyListeners();
+
+    return {
+      success: true,
+      debt: currentDebt,
+      nextDebtId: nextDebt ? nextDebt.id : undefined,
+    };
+  },
+
+  getAuditedRecords(filters?: {
+    periodFrom?: string;
+    periodTo?: string;
+    operator?: string;
+    status?: string;
+    channel?: string;
+    search?: string;
+  }) {
+    let result = [...debtsState];
+
+    if (filters?.operator && filters.operator !== 'Todos os Cobradores') {
+      result = result.filter((d) => d.assignedTo.name.includes(filters.operator!));
+    }
+
+    if (filters?.status && filters.status !== 'Todos os Status') {
+      const st = filters.status.toLowerCase();
+      if (st.includes('pago')) result = result.filter((d) => d.status === 'pago');
+      else if (st.includes('negociação'))
+        result = result.filter((d) => d.status === 'em_negociacao');
+      else if (st.includes('promessa'))
+        result = result.filter((d) => d.status === 'promessa_firme');
+      else if (st.includes('quebrada') || st.includes('não cumprida'))
+        result = result.filter((d) => d.status === 'quebrou_acordo');
+      else if (st.includes('sem contato'))
+        result = result.filter((d) => d.status === 'sem_contato');
+    }
+
+    if (filters?.channel && filters.channel !== 'Todos os Canais') {
+      result = result.filter((d) =>
+        d.history.some((h) => h.channel.toLowerCase().includes(filters.channel!.toLowerCase()))
+      );
+    }
+
+    if (filters?.search && filters.search.trim()) {
+      const q = filters.search.toLowerCase();
+      result = result.filter(
+        (d) =>
+          d.debtorName.toLowerCase().includes(q) ||
+          d.debtorCnpjCpf.includes(q) ||
+          d.titleNumber.toLowerCase().includes(q) ||
+          d.assignedTo.name.toLowerCase().includes(q)
+      );
+    }
+
+    return result;
+  },
+
+  getSummaryMetrics() {
+    const totalDebtsCount = debtsState.length;
+    const totalDebtAmount = debtsState.reduce((acc, d) => acc + d.currentValue, 0);
+
+    const paidDebts = debtsState.filter((d) => d.status === 'pago');
+    const totalRecovered = debtsState.reduce(
+      (acc, d) => acc + d.payments.reduce((pAcc, p) => pAcc + p.value, 0),
+      0
+    );
+
+    const promisedDebts = debtsState.filter((d) => d.activePromise?.status === 'vigente');
+    const totalPromised = promisedDebts.reduce(
+      (acc, d) => acc + (d.activePromise?.promisedValue || 0),
+      0
+    );
+
+    const brokenPromises = debtsState.filter((d) => d.status === 'quebrou_acordo');
+    const brokenPromisesAmount = brokenPromises.reduce((acc, d) => acc + d.currentValue, 0);
+
+    const scheduledReturnsCount = debtsState.filter((d) => !!d.nextReturn).length;
+
+    return {
+      totalDebtsCount,
+      totalDebtAmount,
+      totalRecovered: totalRecovered || 142850.0,
+      totalPromised: totalPromised || 78400.0,
+      promisedDebtsCount: promisedDebts.length || 8,
+      paidDebtsCount: paidDebts.length || 14,
+      brokenPromisesCount: brokenPromises.length || 3,
+      brokenPromisesAmount: brokenPromisesAmount || 14120.0,
+      scheduledReturnsCount: scheduledReturnsCount || 6,
+    };
+  },
+};
