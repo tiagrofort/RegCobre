@@ -1,7 +1,17 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { debtService } from '../services/debtService';
-import { Debt, ContactChannel, ContactResult, ContactRegistrationPayload } from '../types';
+import {
+  Debt,
+  DebtorPhone,
+  DebtorPaymentData,
+  DebtorPhoneType,
+  PaymentDataType,
+  PixKeyType,
+  ContactChannel,
+  ContactResult,
+  ContactRegistrationPayload,
+} from '../types';
 
 interface FichaCobrancaViewProps {
   debtId: string;
@@ -27,6 +37,15 @@ export const FichaCobrancaView: React.FC<FichaCobrancaViewProps> = ({
   onOpenFastLog: _onOpenFastLog,
 }) => {
   const { currentUser } = useAuth();
+
+  // Re-render trigger when debtService emits changes
+  const [, setTick] = useState(0);
+  useEffect(() => {
+    return debtService.subscribe(() => {
+      setTick((t) => t + 1);
+    });
+  }, []);
+
   const debt = debtService.getDebtById(debtId) || debtService.getAllDebts()[0];
   const debtor = debtService.getDebtorById(debt.debtorId) || debtService.getAllDebtors()[0];
   const debtorDebts = debtService.getDebtsByDebtorId(debt.debtorId);
@@ -60,10 +79,34 @@ export const FichaCobrancaView: React.FC<FichaCobrancaViewProps> = ({
   const [isQueueFinishedNotice, setIsQueueFinishedNotice] = useState(false);
   const [toastMsg, setToastMsg] = useState<string | null>(null);
 
+  // Dropdown states for quick copy buttons
+  const [isPhoneDropdownOpen, setIsPhoneDropdownOpen] = useState(false);
+  const [isPaymentDropdownOpen, setIsPaymentDropdownOpen] = useState(false);
+
+  // --- Phone Modal / Form State ---
+  const [isPhoneModalOpen, setIsPhoneModalOpen] = useState(false);
+  const [editingPhoneId, setEditingPhoneId] = useState<string | null>(null);
+  const [phoneNumber, setPhoneNumber] = useState('');
+  const [phoneType, setPhoneType] = useState<DebtorPhoneType>('Celular');
+  const [phoneDescription, setPhoneDescription] = useState('');
+  const [phoneHasWhatsApp, setPhoneHasWhatsApp] = useState(true);
+  const [phoneActive, setPhoneActive] = useState(true);
+
+  // --- Payment Data Modal / Form State ---
+  const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
+  const [editingPaymentId, setEditingPaymentId] = useState<string | null>(null);
+  const [paymentType, setPaymentType] = useState<PaymentDataType>('PIX');
+  const [paymentDescription, setPaymentDescription] = useState('');
+  const [pixKeyType, setPixKeyType] = useState<PixKeyType>('CNPJ');
+  const [paymentInfo, setPaymentInfo] = useState('');
+  const [paymentActive, setPaymentActive] = useState(true);
+
   // Reset / populate form when debtId changes
   useEffect(() => {
     setIsFazActive(false);
     setIsQueueFinishedNotice(false);
+    setIsPhoneDropdownOpen(false);
+    setIsPaymentDropdownOpen(false);
     if (debt) {
       setContactPerson(debt.debtorName.includes('Andrade') ? 'Dr. Marcos P. de Souza' : debtor.mainContact.name);
       const formatted = debt.currentValue.toLocaleString('pt-BR', {
@@ -85,16 +128,175 @@ export const FichaCobrancaView: React.FC<FichaCobrancaViewProps> = ({
     setTimeout(() => setToastMsg(null), 3500);
   };
 
-  const handleCopyPaymentInfo = () => {
-    const text = `RegCobre - Cobrança Título ${debt.titleNumber} | Devedor: ${debt.debtorName} | Valor: R$ ${debt.currentValue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })} | Vencimento: ${debt.dueDate} | Linha PIX/Cód: 34191.79001 01043.510047 91020.150008 8 98210000${Math.round(debt.currentValue)}`;
-    navigator.clipboard?.writeText(text);
-    showToast('Dados de pagamento e linha digitável copiados para a área de transferência!');
+  const debtorPhones: DebtorPhone[] = (debtor.phones && debtor.phones.length > 0)
+    ? debtor.phones
+    : [
+        {
+          id: 'ph-fallback-1',
+          number: debtor.mainContact.phoneMobile || debtor.mainContact.phoneFixed || '(11) 98822-1044',
+          type: 'Celular',
+          description: debtor.mainContact.name || 'Contato Principal',
+          hasWhatsApp: debtor.mainContact.hasWhatsApp ?? true,
+          active: true,
+        },
+      ];
+
+  const activePhones = debtorPhones.filter((p) => p.active);
+  const primaryPhone = activePhones[0] || debtorPhones[0];
+
+  const debtorPayments: DebtorPaymentData[] = debtor.paymentData || [];
+  const activePayments: DebtorPaymentData[] = debtorPayments.filter((p) => p.active);
+  const primaryPayment = activePayments[0] || debtorPayments[0];
+
+  const handleCopyPaymentInfo = (payment?: DebtorPaymentData) => {
+    const target = payment || primaryPayment;
+    if (!target) {
+      showToast('Nenhum dado de pagamento cadastrado para este devedor.');
+      return;
+    }
+    const textToCopy = target.paymentInfo || target.pixKey || '';
+    navigator.clipboard?.writeText(textToCopy);
+    showToast(`Dado de pagamento copiado: ${textToCopy} (${target.description})`);
+    setIsPaymentDropdownOpen(false);
   };
 
-  const handleCopyWhatsApp = () => {
-    const phone = debtor.mainContact.phoneMobile || debtor.mainContact.phoneFixed;
+  const handleCopyPhoneNumber = (phone: string, desc?: string) => {
     navigator.clipboard?.writeText(phone);
-    showToast(`Telefone ${phone} copiado!`);
+    showToast(`Telefone copiado: ${phone}${desc ? ` (${desc})` : ''}`);
+    setIsPhoneDropdownOpen(false);
+  };
+
+  const handleUsePaymentInNotes = (payment: DebtorPaymentData) => {
+    const payText = `Pagamento via ${payment.type}: ${payment.paymentInfo || payment.pixKey}${payment.pixKeyType ? ` (${payment.pixKeyType})` : ''} - ${payment.description}`;
+    setNotes((prev) => (prev ? `${prev}\n${payText}` : payText));
+    if (!isFazActive) {
+      setIsFazActive(true);
+    }
+    showToast('Dado de pagamento inserido na observação do contato!');
+  };
+
+  // --- Phone Handlers ---
+  const handleOpenAddPhone = () => {
+    setEditingPhoneId(null);
+    setPhoneNumber('');
+    setPhoneType('Celular');
+    setPhoneDescription('');
+    setPhoneHasWhatsApp(true);
+    setPhoneActive(true);
+    setIsPhoneModalOpen(true);
+  };
+
+  const handleOpenEditPhone = (phone: DebtorPhone) => {
+    setEditingPhoneId(phone.id);
+    setPhoneNumber(phone.number);
+    setPhoneType(phone.type);
+    setPhoneDescription(phone.description);
+    setPhoneHasWhatsApp(phone.hasWhatsApp);
+    setPhoneActive(phone.active);
+    setIsPhoneModalOpen(true);
+  };
+
+  const handleSavePhone = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!debtor) return;
+    if (!phoneNumber.trim()) {
+      showToast('Por favor, informe o número do telefone.');
+      return;
+    }
+
+    if (editingPhoneId) {
+      debtService.updateDebtorPhone(debtor.id, editingPhoneId, {
+        number: phoneNumber.trim(),
+        type: phoneType,
+        description: phoneDescription.trim(),
+        hasWhatsApp: phoneHasWhatsApp,
+        active: phoneActive,
+      });
+      showToast(`Telefone ${phoneNumber} atualizado com sucesso!`);
+    } else {
+      debtService.addDebtorPhone(debtor.id, {
+        number: phoneNumber.trim(),
+        type: phoneType,
+        description: phoneDescription.trim() || `${phoneType} de Contato`,
+        hasWhatsApp: phoneHasWhatsApp,
+        active: phoneActive,
+      });
+      showToast(`Novo telefone ${phoneNumber} cadastrado para ${debtor.name}!`);
+    }
+    setIsPhoneModalOpen(false);
+  };
+
+  const handleTogglePhoneActive = (phone: DebtorPhone) => {
+    if (!debtor) return;
+    debtService.toggleDebtorPhoneStatus(debtor.id, phone.id);
+    showToast(
+      phone.active
+        ? `Telefone ${phone.number} desativado.`
+        : `Telefone ${phone.number} ativado.`
+    );
+  };
+
+  // --- Payment Data Handlers ---
+  const handleOpenAddPayment = () => {
+    setEditingPaymentId(null);
+    setPaymentType('PIX');
+    setPaymentDescription('');
+    setPixKeyType('CNPJ');
+    setPaymentInfo('');
+    setPaymentActive(true);
+    setIsPaymentModalOpen(true);
+  };
+
+  const handleOpenEditPayment = (payment: DebtorPaymentData) => {
+    setEditingPaymentId(payment.id);
+    setPaymentType(payment.type);
+    setPaymentDescription(payment.description);
+    setPixKeyType(payment.pixKeyType || 'CNPJ');
+    setPaymentInfo(payment.paymentInfo || payment.pixKey || '');
+    setPaymentActive(payment.active);
+    setIsPaymentModalOpen(true);
+  };
+
+  const handleSavePayment = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!debtor) return;
+    if (!paymentInfo.trim()) {
+      showToast('Por favor, informe a chave PIX ou dado de pagamento.');
+      return;
+    }
+
+    if (editingPaymentId) {
+      debtService.updateDebtorPaymentData(debtor.id, editingPaymentId, {
+        type: paymentType,
+        description: paymentDescription.trim() || `Chave ${paymentType}`,
+        pixKeyType: paymentType === 'PIX' ? pixKeyType : undefined,
+        pixKey: paymentType === 'PIX' ? paymentInfo.trim() : undefined,
+        paymentInfo: paymentInfo.trim(),
+        active: paymentActive,
+      });
+      showToast(`Dado de pagamento atualizado com sucesso!`);
+    } else {
+      debtService.addDebtorPaymentData(debtor.id, {
+        type: paymentType,
+        description: paymentDescription.trim() || `Chave ${paymentType} ${pixKeyType}`,
+        pixKeyType: paymentType === 'PIX' ? pixKeyType : undefined,
+        pixKey: paymentType === 'PIX' ? paymentInfo.trim() : undefined,
+        paymentInfo: paymentInfo.trim(),
+        active: paymentActive,
+      });
+      showToast(`Novo dado de pagamento cadastrado para ${debtor.name}!`);
+    }
+    setIsPaymentModalOpen(false);
+  };
+
+  const handleTogglePaymentActive = (payment: DebtorPaymentData) => {
+    if (!debtor) return;
+    debtService.toggleDebtorPaymentDataStatus(debtor.id, payment.id);
+    showToast(
+      payment.active
+        ? `Dado de pagamento desativado.`
+        : `Dado de pagamento ativado.`
+    );
   };
 
   // Adjust conditional toggles when result changes
@@ -271,15 +473,148 @@ export const FichaCobrancaView: React.FC<FichaCobrancaViewProps> = ({
 
           {/* AÇÕES RÁPIDAS DA FICHA */}
           <div className="flex items-center gap-space-xs flex-wrap">
-            <button
-              onClick={handleCopyPaymentInfo}
-              className="h-9 px-3 bg-surface-container-lowest hover:bg-surface-container text-on-surface rounded-lg shadow-2xs font-label-uppercase text-xs tracking-wider inline-flex items-center gap-1.5 transition-colors cursor-pointer border border-outline-variant/30"
-              type="button"
-              title="Copiar linha digitável e PIX do título"
-            >
-              <span className="material-symbols-outlined text-[16px] text-secondary">content_copy</span>
-              <span>Copiar PIX / Dados</span>
-            </button>
+            {/* BOTÃO 1: COPIAR TELEFONE (COM SUPORTE A MÚLTIPLOS TELEFONES) */}
+            <div className="relative">
+              <div className="inline-flex rounded-lg shadow-2xs border border-outline-variant/30 bg-surface-container-lowest">
+                <button
+                  onClick={() => {
+                    if (primaryPhone) {
+                      handleCopyPhoneNumber(primaryPhone.number, primaryPhone.description);
+                    } else {
+                      showToast('Nenhum telefone cadastrado para este devedor.');
+                    }
+                  }}
+                  className="h-9 px-3 hover:bg-surface-container text-on-surface font-label-uppercase text-xs tracking-wider inline-flex items-center gap-1.5 transition-colors cursor-pointer rounded-l-lg"
+                  type="button"
+                  title={primaryPhone ? `Copiar ${primaryPhone.number} (${primaryPhone.type})` : 'Copiar telefone'}
+                >
+                  <span className="material-symbols-outlined text-[16px] text-primary">call</span>
+                  <span>Copiar Telefone</span>
+                </button>
+                {activePhones.length > 1 && (
+                  <button
+                    onClick={() => {
+                      setIsPhoneDropdownOpen(!isPhoneDropdownOpen);
+                      setIsPaymentDropdownOpen(false);
+                    }}
+                    className="h-9 px-1.5 hover:bg-surface-container text-on-surface-variant hover:text-primary transition-colors cursor-pointer border-l border-outline-variant/20 rounded-r-lg"
+                    type="button"
+                    title={`Ver todos os ${activePhones.length} telefones ativos`}
+                  >
+                    <span className="material-symbols-outlined text-[16px]">
+                      {isPhoneDropdownOpen ? 'expand_less' : 'expand_more'}
+                    </span>
+                  </button>
+                )}
+              </div>
+
+              {/* Dropdown de Telefones */}
+              {isPhoneDropdownOpen && activePhones.length > 1 && (
+                <div className="absolute left-0 top-10 w-72 bg-surface-container-lowest rounded-xl shadow-xl border border-outline-variant/30 p-2 z-50 animate-fade-in flex flex-col gap-1">
+                  <div className="px-2 py-1 text-[10px] font-label-uppercase font-bold text-outline border-b border-outline-variant/20 flex items-center justify-between">
+                    <span>Telefones Ativos ({activePhones.length})</span>
+                    <span className="text-[10px] text-primary font-semibold">Clique para copiar</span>
+                  </div>
+                  {activePhones.map((ph) => (
+                    <button
+                      key={ph.id}
+                      type="button"
+                      onClick={() => handleCopyPhoneNumber(ph.number, ph.description)}
+                      className="p-2 rounded-lg hover:bg-surface-container flex items-center justify-between text-left transition-colors cursor-pointer group"
+                    >
+                      <div className="flex flex-col min-w-0 pr-2">
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <span className="font-data-mono font-bold text-xs text-primary group-hover:text-secondary">
+                            {ph.number}
+                          </span>
+                          <span className="px-1.5 py-0.2 rounded bg-surface-container-high text-[9px] font-semibold text-on-surface-variant">
+                            {ph.type}
+                          </span>
+                          {ph.hasWhatsApp && (
+                            <span className="material-symbols-outlined text-[13px] text-emerald-600" title="Possui WhatsApp">
+                              chat
+                            </span>
+                          )}
+                        </div>
+                        {ph.description && (
+                          <span className="text-[10px] text-on-surface-variant truncate mt-0.5">
+                            {ph.description}
+                          </span>
+                        )}
+                      </div>
+                      <span className="material-symbols-outlined text-[14px] text-outline group-hover:text-secondary shrink-0">
+                        content_copy
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* BOTÃO 2: COPIAR PIX / DADOS (COM SUPORTE A MÚLTIPLOS DADOS DE PAGAMENTO) */}
+            <div className="relative">
+              <div className="inline-flex rounded-lg shadow-2xs border border-outline-variant/30 bg-surface-container-lowest">
+                <button
+                  onClick={() => handleCopyPaymentInfo(primaryPayment)}
+                  className="h-9 px-3 hover:bg-surface-container text-on-surface font-label-uppercase text-xs tracking-wider inline-flex items-center gap-1.5 transition-colors cursor-pointer rounded-l-lg"
+                  type="button"
+                  title="Copiar chave PIX / dados de pagamento"
+                >
+                  <span className="material-symbols-outlined text-[16px] text-secondary">account_balance_wallet</span>
+                  <span>Copiar PIX / Dados</span>
+                </button>
+                {activePayments.length > 1 && (
+                  <button
+                    onClick={() => {
+                      setIsPaymentDropdownOpen(!isPaymentDropdownOpen);
+                      setIsPhoneDropdownOpen(false);
+                    }}
+                    className="h-9 px-1.5 hover:bg-surface-container text-on-surface-variant hover:text-secondary transition-colors cursor-pointer border-l border-outline-variant/20 rounded-r-lg"
+                    type="button"
+                    title={`Ver todos os ${activePayments.length} dados de pagamento ativos`}
+                  >
+                    <span className="material-symbols-outlined text-[16px]">
+                      {isPaymentDropdownOpen ? 'expand_less' : 'expand_more'}
+                    </span>
+                  </button>
+                )}
+              </div>
+
+              {/* Dropdown de Dados de Pagamento */}
+              {isPaymentDropdownOpen && activePayments.length > 1 && (
+                <div className="absolute left-0 top-10 w-80 bg-surface-container-lowest rounded-xl shadow-xl border border-outline-variant/30 p-2 z-50 animate-fade-in flex flex-col gap-1">
+                  <div className="px-2 py-1 text-[10px] font-label-uppercase font-bold text-outline border-b border-outline-variant/20 flex items-center justify-between">
+                    <span>Dados de Pagamento ({activePayments.length} ativos)</span>
+                    <span className="text-[10px] text-secondary font-semibold">Clique para copiar</span>
+                  </div>
+                  {activePayments.map((p) => (
+                    <button
+                      key={p.id}
+                      type="button"
+                      onClick={() => handleCopyPaymentInfo(p)}
+                      className="p-2 rounded-lg hover:bg-surface-container flex items-center justify-between text-left transition-colors cursor-pointer group"
+                    >
+                      <div className="flex flex-col min-w-0 pr-2">
+                        <div className="flex items-center gap-1.5">
+                          <span className="px-1.5 py-0.2 rounded bg-secondary-container text-on-secondary-container text-[9px] font-bold uppercase">
+                            {p.type} {p.pixKeyType ? `• ${p.pixKeyType}` : ''}
+                          </span>
+                          <span className="text-xs font-semibold text-primary truncate max-w-[150px]">
+                            {p.description}
+                          </span>
+                        </div>
+                        <span className="font-data-mono text-[11px] text-on-surface font-semibold truncate mt-0.5 select-all">
+                          {p.paymentInfo || p.pixKey}
+                        </span>
+                      </div>
+                      <span className="material-symbols-outlined text-[14px] text-outline group-hover:text-secondary shrink-0">
+                        content_copy
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
 
             <button
               onClick={() => window.print()}
@@ -1277,30 +1612,223 @@ export const FichaCobrancaView: React.FC<FichaCobrancaViewProps> = ({
                 </span>
               </div>
 
-              <div>
-                <div className="flex items-center justify-between mb-0.5">
-                  <span className="text-outline font-label-uppercase text-[10px]">
-                    TELEFONES
-                  </span>
+              {/* TELEFONES DO DEVEDOR (MÚLTIPLOS TELEFONES) */}
+              <div className="pt-2 border-t border-outline-variant/15">
+                <div className="flex items-center justify-between mb-1.5">
+                  <div className="flex items-center gap-1.5">
+                    <span className="material-symbols-outlined text-[16px] text-primary">call</span>
+                    <span className="text-outline font-label-uppercase text-[10px] font-bold">
+                      TELEFONES DO DEVEDOR ({debtorPhones.length})
+                    </span>
+                    <span className="text-[10px] text-on-surface-variant font-data-mono">
+                      • {debtorPhones.filter((p) => p.active).length} ativo(s)
+                    </span>
+                  </div>
                   <button
                     type="button"
-                    onClick={handleCopyWhatsApp}
-                    className="text-[10px] text-secondary hover:underline font-semibold flex items-center gap-0.5 cursor-pointer"
-                    title="Copiar telefone principal"
+                    onClick={handleOpenAddPhone}
+                    className="text-[11px] text-primary hover:text-secondary font-semibold inline-flex items-center gap-0.5 cursor-pointer bg-surface-container hover:bg-surface-variant px-2 py-0.5 rounded transition-colors"
+                    title="Cadastrar novo telefone para este devedor"
                   >
-                    <span>Copiar número</span>
-                    <span className="material-symbols-outlined text-[11px]">content_copy</span>
+                    <span className="material-symbols-outlined text-[13px]">add</span>
+                    <span>Adicionar</span>
                   </button>
                 </div>
-                <div className="flex items-center gap-2">
-                  <span className="font-data-mono text-on-surface">
-                    {debtor.mainContact.phoneFixed}
-                  </span>
-                  <span>•</span>
-                  <span className="font-data-mono text-on-surface font-semibold text-secondary">
-                    {debtor.mainContact.phoneMobile} (WhatsApp)
-                  </span>
+
+                <div className="flex flex-col gap-1.5">
+                  {debtorPhones.map((ph) => (
+                    <div
+                      key={ph.id}
+                      className={`p-2 rounded-lg flex items-center justify-between gap-2 border transition-colors ${
+                        ph.active
+                          ? 'bg-surface-container-low border-outline-variant/20 hover:border-secondary/30'
+                          : 'bg-surface-container/50 border-dashed border-outline-variant/30 opacity-60'
+                      }`}
+                    >
+                      <div className="flex flex-col min-w-0 flex-1">
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <span className="font-data-mono font-bold text-xs text-on-surface">
+                            {ph.number}
+                          </span>
+                          <span className="px-1.5 py-0.2 rounded bg-surface-container-highest text-[9px] font-semibold text-on-surface-variant">
+                            {ph.type}
+                          </span>
+                          {ph.hasWhatsApp && (
+                            <span
+                              className="inline-flex items-center text-emerald-700 font-bold text-[10px] gap-0.5"
+                              title="Possui WhatsApp"
+                            >
+                              <span className="material-symbols-outlined text-[13px]">chat</span>
+                              <span>WhatsApp</span>
+                            </span>
+                          )}
+                          <span
+                            className={`px-1 py-0.2 rounded font-badge-sm text-[9px] font-bold ${
+                              ph.active
+                                ? 'bg-secondary-container text-on-secondary-container'
+                                : 'bg-surface-container-highest text-outline'
+                            }`}
+                          >
+                            {ph.active ? 'Ativo' : 'Inativo'}
+                          </span>
+                        </div>
+                        {ph.description && (
+                          <span className="text-[10px] text-on-surface-variant truncate mt-0.5">
+                            {ph.description}
+                          </span>
+                        )}
+                      </div>
+
+                      <div className="flex items-center gap-0.5 shrink-0">
+                        <button
+                          type="button"
+                          onClick={() => handleCopyPhoneNumber(ph.number, ph.description)}
+                          className="p-1 rounded hover:bg-surface-container text-on-surface-variant hover:text-secondary transition-colors cursor-pointer"
+                          title={`Copiar telefone ${ph.number}`}
+                        >
+                          <span className="material-symbols-outlined text-[15px]">content_copy</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleOpenEditPhone(ph)}
+                          className="p-1 rounded hover:bg-surface-container text-on-surface-variant hover:text-primary transition-colors cursor-pointer"
+                          title="Editar telefone"
+                        >
+                          <span className="material-symbols-outlined text-[15px]">edit</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleTogglePhoneActive(ph)}
+                          className={`px-1.5 py-0.5 rounded text-[10px] font-semibold transition-colors cursor-pointer ${
+                            ph.active
+                              ? 'text-on-surface-variant hover:text-error hover:bg-error-container/40'
+                              : 'text-secondary hover:bg-secondary-container/40'
+                          }`}
+                          title={ph.active ? 'Desativar telefone (sem exclusão física)' : 'Reativar telefone'}
+                        >
+                          {ph.active ? 'Desativar' : 'Ativar'}
+                        </button>
+                      </div>
+                    </div>
+                  ))}
                 </div>
+              </div>
+
+              {/* DADOS PARA PAGAMENTO (CADASTRO DO DEVEDOR) */}
+              <div className="pt-2.5 border-t border-outline-variant/20">
+                <div className="flex items-center justify-between mb-1.5">
+                  <div className="flex items-center gap-1.5">
+                    <span className="material-symbols-outlined text-secondary text-[16px]">
+                      account_balance_wallet
+                    </span>
+                    <span className="text-outline font-label-uppercase text-[10px] font-bold">
+                      DADOS PARA PAGAMENTO ({debtorPayments.length})
+                    </span>
+                    <span className="text-[10px] text-on-surface-variant font-data-mono">
+                      • {activePayments.length} ativo(s)
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleOpenAddPayment}
+                    className="text-[11px] text-secondary hover:text-primary font-semibold inline-flex items-center gap-0.5 cursor-pointer bg-surface-container hover:bg-surface-variant px-2 py-0.5 rounded transition-colors"
+                    title="Cadastrar nova chave PIX / dado de pagamento"
+                  >
+                    <span className="material-symbols-outlined text-[13px]">add</span>
+                    <span>Adicionar</span>
+                  </button>
+                </div>
+
+                {debtorPayments.length === 0 ? (
+                  <div className="p-2.5 bg-surface-container-low rounded-lg border border-dashed border-outline-variant/30 text-center">
+                    <p className="text-xs text-on-surface-variant italic">
+                      Nenhum dado de pagamento cadastrado.
+                    </p>
+                  </div>
+                ) : (
+                  <div className="flex flex-col gap-1.5">
+                    {debtorPayments.map((p) => (
+                      <div
+                        key={p.id}
+                        className={`p-2.5 rounded-lg flex flex-col gap-1 border transition-colors ${
+                          p.active
+                            ? 'bg-surface-container-low border-outline-variant/20 hover:border-secondary/40'
+                            : 'bg-surface-container/50 border-dashed border-outline-variant/30 opacity-60'
+                        }`}
+                      >
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-1.5 truncate max-w-[190px]">
+                            <span className="px-1.5 py-0.2 rounded bg-secondary-container text-on-secondary-container text-[9px] font-bold uppercase shrink-0">
+                              {p.type} {p.pixKeyType ? `• ${p.pixKeyType}` : ''}
+                            </span>
+                            <span className="text-xs font-semibold text-primary truncate">
+                              {p.description}
+                            </span>
+                          </div>
+                          <span
+                            className={`px-1 py-0.2 rounded font-badge-sm text-[9px] font-bold shrink-0 ${
+                              p.active
+                                ? 'bg-secondary-container text-on-secondary-container'
+                                : 'bg-surface-container-highest text-outline'
+                            }`}
+                          >
+                            {p.active ? 'Ativo' : 'Inativo'}
+                          </span>
+                        </div>
+
+                        <div className="flex items-center justify-between gap-1.5 pt-0.5">
+                          <span className="font-data-mono text-xs text-on-surface select-all truncate font-semibold">
+                            {p.paymentInfo || p.pixKey}
+                          </span>
+                          <div className="flex items-center gap-1 shrink-0">
+                            {p.active && (
+                              <button
+                                type="button"
+                                onClick={() => handleUsePaymentInNotes(p)}
+                                className="px-1.5 py-0.5 rounded bg-surface-container hover:bg-surface-variant text-[10px] text-primary font-semibold transition-colors cursor-pointer"
+                                title="Inserir dado de pagamento nas observações da cobrança"
+                              >
+                                Usar
+                              </button>
+                            )}
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const key = p.paymentInfo || p.pixKey || '';
+                                navigator.clipboard?.writeText(key);
+                                showToast(`Dado de pagamento copiado: ${key} (${p.description})`);
+                              }}
+                              className="p-1 rounded hover:bg-surface-container text-on-surface-variant hover:text-secondary transition-colors cursor-pointer"
+                              title="Copiar chave/dado de pagamento"
+                            >
+                              <span className="material-symbols-outlined text-[15px]">content_copy</span>
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleOpenEditPayment(p)}
+                              className="p-1 rounded hover:bg-surface-container text-on-surface-variant hover:text-primary transition-colors cursor-pointer"
+                              title="Editar dado de pagamento"
+                            >
+                              <span className="material-symbols-outlined text-[15px]">edit</span>
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleTogglePaymentActive(p)}
+                              className={`px-1.5 py-0.5 rounded text-[10px] font-semibold transition-colors cursor-pointer ${
+                                p.active
+                                  ? 'text-on-surface-variant hover:text-error hover:bg-error-container/40'
+                                  : 'text-secondary hover:bg-secondary-container/40'
+                              }`}
+                              title={p.active ? 'Desativar dado de pagamento (sem exclusão física)' : 'Reativar dado'}
+                            >
+                              {p.active ? 'Desativar' : 'Ativar'}
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
 
               <div>
@@ -1426,6 +1954,294 @@ export const FichaCobrancaView: React.FC<FichaCobrancaViewProps> = ({
           </div>
         </div>
       </div>
+
+      {/* =================================================================== */}
+      {/* MODAL: ADICIONAR / EDITAR TELEFONE NO DEVEDOR                       */}
+      {/* =================================================================== */}
+      {isPhoneModalOpen && (
+        <div className="fixed inset-0 bg-primary/40 backdrop-blur-xs z-50 flex items-center justify-center p-4">
+          <div className="bg-surface-container-lowest rounded-xl shadow-2xl max-w-md w-full border border-outline-variant/30 overflow-hidden animate-fade-in">
+            <div className="p-4 bg-primary text-surface flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <span className="material-symbols-outlined text-[20px] text-secondary-fixed">
+                  call
+                </span>
+                <div>
+                  <h3 className="font-title-md font-bold text-sm">
+                    {editingPhoneId ? 'Editar Telefone do Devedor' : 'Novo Telefone do Devedor'}
+                  </h3>
+                  <span className="text-[10px] text-on-primary-container block truncate max-w-[260px]">
+                    {debtor.name}
+                  </span>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsPhoneModalOpen(false)}
+                className="text-surface hover:text-secondary-fixed cursor-pointer p-1 rounded"
+              >
+                ✕
+              </button>
+            </div>
+
+            <form onSubmit={handleSavePhone} className="p-4 space-y-3 text-xs">
+              <div>
+                <label className="block font-label-uppercase font-bold text-outline mb-1 text-[10px]">
+                  NÚMERO DO TELEFONE *
+                </label>
+                <input
+                  type="text"
+                  required
+                  placeholder="Ex: (11) 98822-1044 ou (11) 3452-8800"
+                  className="w-full h-9 px-3 bg-surface-container-low rounded-lg font-data-mono text-sm text-on-surface border border-outline-variant/30 focus:outline-none focus:border-primary"
+                  value={phoneNumber}
+                  onChange={(e) => setPhoneNumber(e.target.value)}
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-label-uppercase font-bold text-outline mb-1 text-[10px]">
+                    TIPO *
+                  </label>
+                  <select
+                    className="w-full h-9 px-2 bg-surface-container-low rounded-lg text-xs font-semibold text-on-surface border border-outline-variant/30 focus:outline-none"
+                    value={phoneType}
+                    onChange={(e) => setPhoneType(e.target.value as DebtorPhoneType)}
+                  >
+                    <option value="Celular">Celular</option>
+                    <option value="Fixo">Fixo</option>
+                    <option value="Comercial">Comercial</option>
+                    <option value="Financeiro">Financeiro</option>
+                    <option value="Outro">Outro</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block font-label-uppercase font-bold text-outline mb-1 text-[10px]">
+                    STATUS DO TELEFONE
+                  </label>
+                  <label className="flex items-center gap-2 h-9 px-2 bg-surface-container-low rounded-lg border border-outline-variant/30 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={phoneActive}
+                      onChange={(e) => setPhoneActive(e.target.checked)}
+                      className="accent-secondary h-4 w-4"
+                    />
+                    <span className="text-xs font-semibold text-on-surface">
+                      {phoneActive ? 'Ativo' : 'Inativo'}
+                    </span>
+                  </label>
+                </div>
+              </div>
+
+              <div>
+                <label className="block font-label-uppercase font-bold text-outline mb-1 text-[10px]">
+                  DESCRIÇÃO / APELIDO / RESPONSÁVEL
+                </label>
+                <input
+                  type="text"
+                  placeholder="Ex: Dr. Marcos (Diretoria), Setor Cobrança, Recepção"
+                  className="w-full h-9 px-3 bg-surface-container-low rounded-lg text-xs text-on-surface border border-outline-variant/30 focus:outline-none focus:border-primary"
+                  value={phoneDescription}
+                  onChange={(e) => setPhoneDescription(e.target.value)}
+                />
+              </div>
+
+              <div className="p-2.5 bg-surface-container-low rounded-lg border border-outline-variant/30 flex items-center justify-between">
+                <div>
+                  <span className="font-semibold text-on-surface block text-xs">
+                    Possui WhatsApp ativo?
+                  </span>
+                  <span className="text-[11px] text-on-surface-variant">
+                    Exibe o selo de mensageria na Ficha de Cobrança
+                  </span>
+                </div>
+                <input
+                  type="checkbox"
+                  checked={phoneHasWhatsApp}
+                  onChange={(e) => setPhoneHasWhatsApp(e.target.checked)}
+                  className="accent-emerald-600 h-4 w-4"
+                />
+              </div>
+
+              <div className="pt-2 flex items-center justify-end gap-2 border-t border-outline-variant/20">
+                <button
+                  type="button"
+                  onClick={() => setIsPhoneModalOpen(false)}
+                  className="h-9 px-4 rounded-lg bg-surface-container hover:bg-surface-variant text-on-surface font-semibold text-xs transition-colors cursor-pointer"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  className="h-9 px-5 rounded-lg bg-primary hover:bg-primary-container text-surface font-semibold text-xs transition-colors cursor-pointer shadow-sm"
+                >
+                  {editingPhoneId ? 'Salvar Alterações' : 'Cadastrar Telefone'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* =================================================================== */}
+      {/* MODAL: ADICIONAR / EDITAR DADO DE PAGAMENTO NO DEVEDOR              */}
+      {/* =================================================================== */}
+      {isPaymentModalOpen && (
+        <div className="fixed inset-0 bg-primary/40 backdrop-blur-xs z-50 flex items-center justify-center p-4">
+          <div className="bg-surface-container-lowest rounded-xl shadow-2xl max-w-md w-full border border-outline-variant/30 overflow-hidden animate-fade-in">
+            <div className="p-4 bg-secondary text-on-secondary flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <span className="material-symbols-outlined text-[20px]">
+                  account_balance_wallet
+                </span>
+                <div>
+                  <h3 className="font-title-md font-bold text-sm">
+                    {editingPaymentId ? 'Editar Dado de Pagamento' : 'Novo Dado de Pagamento / PIX'}
+                  </h3>
+                  <span className="text-[10px] text-on-secondary/80 block truncate max-w-[260px]">
+                    {debtor.name}
+                  </span>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsPaymentModalOpen(false)}
+                className="text-on-secondary hover:opacity-80 cursor-pointer p-1 rounded"
+              >
+                ✕
+              </button>
+            </div>
+
+            <form onSubmit={handleSavePayment} className="p-4 space-y-3 text-xs">
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-label-uppercase font-bold text-outline mb-1 text-[10px]">
+                    FORMA *
+                  </label>
+                  <select
+                    className="w-full h-9 px-2 bg-surface-container-low rounded-lg text-xs font-semibold text-on-surface border border-outline-variant/30 focus:outline-none"
+                    value={paymentType}
+                    onChange={(e) => setPaymentType(e.target.value as PaymentDataType)}
+                  >
+                    <option value="PIX">PIX</option>
+                    <option value="Outro">Outro</option>
+                  </select>
+                </div>
+
+                {paymentType === 'PIX' ? (
+                  <div>
+                    <label className="block font-label-uppercase font-bold text-outline mb-1 text-[10px]">
+                      TIPO DE CHAVE *
+                    </label>
+                    <select
+                      className="w-full h-9 px-2 bg-surface-container-low rounded-lg text-xs font-semibold text-on-surface border border-outline-variant/30 focus:outline-none"
+                      value={pixKeyType}
+                      onChange={(e) => setPixKeyType(e.target.value as PixKeyType)}
+                    >
+                      <option value="CNPJ">CNPJ</option>
+                      <option value="CPF">CPF</option>
+                      <option value="E-mail">E-mail</option>
+                      <option value="Telefone">Telefone</option>
+                      <option value="Aleatória">Aleatória</option>
+                      <option value="Outro">Outro</option>
+                    </select>
+                  </div>
+                ) : (
+                  <div>
+                    <label className="block font-label-uppercase font-bold text-outline mb-1 text-[10px]">
+                      STATUS
+                    </label>
+                    <label className="flex items-center gap-2 h-9 px-2 bg-surface-container-low rounded-lg border border-outline-variant/30 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={paymentActive}
+                        onChange={(e) => setPaymentActive(e.target.checked)}
+                        className="accent-secondary h-4 w-4"
+                      />
+                      <span className="text-xs font-semibold text-on-surface">
+                        {paymentActive ? 'Ativo' : 'Inativo'}
+                      </span>
+                    </label>
+                  </div>
+                )}
+              </div>
+
+              <div>
+                <label className="block font-label-uppercase font-bold text-outline mb-1 text-[10px]">
+                  CHAVE PIX / INFORMAÇÃO DE PAGAMENTO *
+                </label>
+                <input
+                  type="text"
+                  required
+                  placeholder={
+                    paymentType === 'PIX'
+                      ? 'Informe a chave PIX exata (ex: 14.892.301/0001-44 ou email@empresa.com)'
+                      : 'Informe os dados de pagamento'
+                  }
+                  className="w-full h-9 px-3 bg-surface-container-low rounded-lg font-data-mono text-sm text-on-surface border border-outline-variant/30 focus:outline-none focus:border-secondary"
+                  value={paymentInfo}
+                  onChange={(e) => setPaymentInfo(e.target.value)}
+                />
+              </div>
+
+              <div>
+                <label className="block font-label-uppercase font-bold text-outline mb-1 text-[10px]">
+                  DESCRIÇÃO / APELIDO *
+                </label>
+                <input
+                  type="text"
+                  placeholder="Ex: PIX Financeiro Principal, PIX Acordos Comerciais"
+                  className="w-full h-9 px-3 bg-surface-container-low rounded-lg text-xs text-on-surface border border-outline-variant/30 focus:outline-none focus:border-secondary"
+                  value={paymentDescription}
+                  onChange={(e) => setPaymentDescription(e.target.value)}
+                />
+              </div>
+
+              {paymentType === 'PIX' && (
+                <div className="p-2.5 bg-surface-container-low rounded-lg border border-outline-variant/30 flex items-center justify-between">
+                  <div>
+                    <span className="font-semibold text-on-surface block text-xs">
+                      Status da Chave
+                    </span>
+                    <span className="text-[11px] text-on-surface-variant">
+                      Chaves ativas ficam disponíveis para cópia rápida na Ficha
+                    </span>
+                  </div>
+                  <label className="flex items-center gap-1.5 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={paymentActive}
+                      onChange={(e) => setPaymentActive(e.target.checked)}
+                      className="accent-secondary h-4 w-4"
+                    />
+                    <span className="text-xs font-semibold text-on-surface">
+                      {paymentActive ? 'Ativo' : 'Inativo'}
+                    </span>
+                  </label>
+                </div>
+              )}
+
+              <div className="pt-2 flex items-center justify-end gap-2 border-t border-outline-variant/20">
+                <button
+                  type="button"
+                  onClick={() => setIsPaymentModalOpen(false)}
+                  className="h-9 px-4 rounded-lg bg-surface-container hover:bg-surface-variant text-on-surface font-semibold text-xs transition-colors cursor-pointer"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  className="h-9 px-5 rounded-lg bg-secondary hover:bg-on-secondary-container text-on-secondary font-semibold text-xs transition-colors cursor-pointer shadow-sm"
+                >
+                  {editingPaymentId ? 'Salvar Alterações' : 'Cadastrar Pagamento'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
 
       {/* Floating notification */}
       {toastMsg && (

@@ -1,6 +1,8 @@
 import {
   Debt,
   Debtor,
+  DebtorPhone,
+  DebtorPaymentData,
   DebtHistoryItem,
   ContactRegistrationPayload,
   User,
@@ -11,7 +13,7 @@ import {
   ResumoProducaoDia,
 } from '../types';
 
-// Initial Mock Debtors (focused strictly on collection)
+// Initial Mock Debtors (focused strictly on collection with phones and payment data)
 const INITIAL_DEBTORS: Debtor[] = [
   {
     id: 'd-andrade',
@@ -30,6 +32,69 @@ const INITIAL_DEBTORS: Debtor[] = [
       email: 'financeiro@metalurgicaandrade.com.br',
       address: 'Av. Industrial, 4200 - Distrito Industrial - Guarulhos/SP',
     },
+    phones: [
+      {
+        id: 'ph-andrade-1',
+        number: '(11) 98822-1044',
+        type: 'Celular',
+        description: 'WhatsApp / Dr. Marcos (Diretoria Financeira)',
+        hasWhatsApp: true,
+        active: true,
+      },
+      {
+        id: 'ph-andrade-2',
+        number: '(11) 3452-8800',
+        type: 'Fixo',
+        description: 'PABX Central / Recepção',
+        hasWhatsApp: false,
+        active: true,
+      },
+      {
+        id: 'ph-andrade-3',
+        number: '(11) 3452-8815',
+        type: 'Financeiro',
+        description: 'Setor Contas a Pagar',
+        hasWhatsApp: true,
+        active: true,
+      },
+      {
+        id: 'ph-andrade-4',
+        number: '(11) 97123-0099',
+        type: 'Celular',
+        description: 'Ex-comprador Paulo (Desativado)',
+        hasWhatsApp: false,
+        active: false,
+      },
+    ],
+    paymentData: [
+      {
+        id: 'pay-andrade-1',
+        type: 'PIX',
+        description: 'PIX Financeiro Principal',
+        pixKeyType: 'CNPJ',
+        pixKey: '14.892.301/0001-44',
+        paymentInfo: '14.892.301/0001-44',
+        active: true,
+      },
+      {
+        id: 'pay-andrade-2',
+        type: 'PIX',
+        description: 'PIX Contas a Receber / Acordos',
+        pixKeyType: 'E-mail',
+        pixKey: 'financeiro@metalurgicaandrade.com.br',
+        paymentInfo: 'financeiro@metalurgicaandrade.com.br',
+        active: true,
+      },
+      {
+        id: 'pay-andrade-3',
+        type: 'PIX',
+        description: 'Chave Transitória Antiga',
+        pixKeyType: 'Aleatória',
+        pixKey: 'a1b2c3d4-e5f6-7890-abcd-ef1234567890',
+        paymentInfo: 'a1b2c3d4-e5f6-7890-abcd-ef1234567890',
+        active: false,
+      },
+    ],
     totalDebt: 26850.0,
     debtsCount: 3,
   },
@@ -50,6 +115,43 @@ const INITIAL_DEBTORS: Debtor[] = [
       email: 'financeiro@rochaforte.com.br',
       address: 'Rua das Palmeiras, 850 - Bela Vista - São Paulo/SP',
     },
+    phones: [
+      {
+        id: 'ph-rocha-1',
+        number: '(11) 97100-3321',
+        type: 'Celular',
+        description: 'Eng. Gilberto Rocha (WhatsApp)',
+        hasWhatsApp: true,
+        active: true,
+      },
+      {
+        id: 'ph-rocha-2',
+        number: '(11) 3105-4422',
+        type: 'Fixo',
+        description: 'Sede Bela Vista',
+        hasWhatsApp: false,
+        active: true,
+      },
+      {
+        id: 'ph-rocha-3',
+        number: '(11) 3105-4499',
+        type: 'Comercial',
+        description: 'Ramal Comercial Antigo',
+        hasWhatsApp: false,
+        active: false,
+      },
+    ],
+    paymentData: [
+      {
+        id: 'pay-rocha-1',
+        type: 'PIX',
+        description: 'PIX Acordos Comerciais',
+        pixKeyType: 'E-mail',
+        pixKey: 'financeiro@rochaforte.com.br',
+        paymentInfo: 'financeiro@rochaforte.com.br',
+        active: true,
+      },
+    ],
     totalDebt: 15750.0,
     debtsCount: 1,
   },
@@ -70,6 +172,25 @@ const INITIAL_DEBTORS: Debtor[] = [
       email: 'contasapagar@superalvorada.com.br',
       address: 'Av. Brasil Central, 1200 - Campinas/SP',
     },
+    phones: [
+      {
+        id: 'ph-alvorada-1',
+        number: '(19) 99233-4411',
+        type: 'Celular',
+        description: 'Sr. Valdemar (WhatsApp)',
+        hasWhatsApp: true,
+        active: true,
+      },
+      {
+        id: 'ph-alvorada-2',
+        number: '(19) 3881-2200',
+        type: 'Fixo',
+        description: 'Matriz Campinas',
+        hasWhatsApp: false,
+        active: true,
+      },
+    ],
+    paymentData: [], // Demonstra devedor SEM dados de pagamento cadastrados
     totalDebt: 25590.0,
     debtsCount: 2,
   },
@@ -90,6 +211,44 @@ const INITIAL_DEBTORS: Debtor[] = [
       email: 'claudio@brasilnorte.com.br',
       address: 'Rodovia BR 316, Km 4 - Ananindeua/PA',
     },
+    phones: [
+      {
+        id: 'ph-norte-1',
+        number: '(91) 98111-2299',
+        type: 'Celular',
+        description: 'Claudio Ferreira (WhatsApp Contador)',
+        hasWhatsApp: true,
+        active: true,
+      },
+      {
+        id: 'ph-norte-2',
+        number: '(91) 3222-1100',
+        type: 'Comercial',
+        description: 'Central de Distribuição',
+        hasWhatsApp: false,
+        active: true,
+      },
+    ],
+    paymentData: [
+      {
+        id: 'pay-norte-1',
+        type: 'PIX',
+        description: 'PIX Celular Financeiro',
+        pixKeyType: 'Telefone',
+        pixKey: '(91) 98111-2299',
+        paymentInfo: '(91) 98111-2299',
+        active: true,
+      },
+      {
+        id: 'pay-norte-2',
+        type: 'PIX',
+        description: 'PIX CNPJ Antigo (Bloqueado)',
+        pixKeyType: 'CNPJ',
+        pixKey: '19.330.122/0003-88',
+        paymentInfo: '19.330.122/0003-88',
+        active: false,
+      },
+    ],
     totalDebt: 43290.0,
     debtsCount: 1,
   },
@@ -110,6 +269,35 @@ const INITIAL_DEBTORS: Debtor[] = [
       email: 'renata@valeverdelog.com.br',
       address: 'Distrito Industrial II - Contagem/MG',
     },
+    phones: [
+      {
+        id: 'ph-vale-1',
+        number: '(31) 3390-8800',
+        type: 'Fixo',
+        description: 'Portaria & Logística',
+        hasWhatsApp: false,
+        active: true,
+      },
+      {
+        id: 'ph-vale-2',
+        number: '(31) 99882-7711',
+        type: 'Financeiro',
+        description: 'Renata Lemos (Supervisão)',
+        hasWhatsApp: false,
+        active: true,
+      },
+    ],
+    paymentData: [
+      {
+        id: 'pay-vale-1',
+        type: 'PIX',
+        description: 'PIX Tesouraria Contagem',
+        pixKeyType: 'E-mail',
+        pixKey: 'financeiro@valeverdelog.com.br',
+        paymentInfo: 'financeiro@valeverdelog.com.br',
+        active: true,
+      },
+    ],
     totalDebt: 5630.0,
     debtsCount: 1,
   },
@@ -130,6 +318,43 @@ const INITIAL_DEBTORS: Debtor[] = [
       email: 'roberto.sampaio@consultoria.com.br',
       address: 'Rua Bela Cintra, 1420 - São Paulo/SP',
     },
+    phones: [
+      {
+        id: 'ph-sampaio-1',
+        number: '(11) 98222-4411',
+        type: 'Celular',
+        description: 'Roberto (WhatsApp Pessoal)',
+        hasWhatsApp: true,
+        active: true,
+      },
+      {
+        id: 'ph-sampaio-2',
+        number: '(11) 2291-5500',
+        type: 'Fixo',
+        description: 'Consultoria Escritório',
+        hasWhatsApp: false,
+        active: true,
+      },
+      {
+        id: 'ph-sampaio-3',
+        number: '(11) 99111-4455',
+        type: 'Celular',
+        description: 'Número anterior desativado',
+        hasWhatsApp: false,
+        active: false,
+      },
+    ],
+    paymentData: [
+      {
+        id: 'pay-sampaio-1',
+        type: 'PIX',
+        description: 'PIX Pessoal Roberto',
+        pixKeyType: 'CPF',
+        pixKey: '382.910.428-11',
+        paymentInfo: '382.910.428-11',
+        active: true,
+      },
+    ],
     totalDebt: 3345.0,
     debtsCount: 1,
   },
@@ -150,6 +375,35 @@ const INITIAL_DEBTORS: Debtor[] = [
       email: 'financeiro@centralsulauto.com.br',
       address: 'Rua Marechal Floriano, 2200 - Curitiba/PR',
     },
+    phones: [
+      {
+        id: 'ph-central-1',
+        number: '(41) 99123-5566',
+        type: 'Celular',
+        description: 'Maurício Santos (WhatsApp Financeiro)',
+        hasWhatsApp: true,
+        active: true,
+      },
+      {
+        id: 'ph-central-2',
+        number: '(41) 3344-9988',
+        type: 'Comercial',
+        description: 'Central de Vendas de Peças',
+        hasWhatsApp: false,
+        active: true,
+      },
+    ],
+    paymentData: [
+      {
+        id: 'pay-central-1',
+        type: 'PIX',
+        description: 'PIX Matriz Curitiba',
+        pixKeyType: 'CNPJ',
+        pixKey: '05.811.234/0001-22',
+        paymentInfo: '05.811.234/0001-22',
+        active: true,
+      },
+    ],
     totalDebt: 12180.0,
     debtsCount: 1,
   },
@@ -170,6 +424,35 @@ const INITIAL_DEBTORS: Debtor[] = [
       email: 'roberto@translogbrasil.com.br',
       address: 'Via Anhanguera, Km 28 - Jundiaí/SP',
     },
+    phones: [
+      {
+        id: 'ph-translog-1',
+        number: '(11) 98765-4321',
+        type: 'Celular',
+        description: 'Roberto Camargo (WhatsApp)',
+        hasWhatsApp: true,
+        active: true,
+      },
+      {
+        id: 'ph-translog-2',
+        number: '(11) 3662-7700',
+        type: 'Fixo',
+        description: 'PABX Operacional Jundiaí',
+        hasWhatsApp: false,
+        active: true,
+      },
+    ],
+    paymentData: [
+      {
+        id: 'pay-translog-1',
+        type: 'PIX',
+        description: 'PIX Corporativo Jundiaí',
+        pixKeyType: 'CNPJ',
+        pixKey: '14.281.992/0001-44',
+        paymentInfo: '14.281.992/0001-44',
+        active: true,
+      },
+    ],
     totalDebt: 18450.0,
     debtsCount: 1,
   },
@@ -190,6 +473,35 @@ const INITIAL_DEBTORS: Debtor[] = [
       email: 'dra.mariana@clinicasaolucas.com.br',
       address: 'Rua Itapeva, 500 - São Paulo/SP',
     },
+    phones: [
+      {
+        id: 'ph-lucas-1',
+        number: '(11) 99441-2233',
+        type: 'Celular',
+        description: 'Dra. Mariana Lucas (WhatsApp)',
+        hasWhatsApp: true,
+        active: true,
+      },
+      {
+        id: 'ph-lucas-2',
+        number: '(11) 2110-3344',
+        type: 'Fixo',
+        description: 'Recepção e Agendamento',
+        hasWhatsApp: false,
+        active: true,
+      },
+    ],
+    paymentData: [
+      {
+        id: 'pay-lucas-1',
+        type: 'PIX',
+        description: 'PIX Clínica São Lucas',
+        pixKeyType: 'CNPJ',
+        pixKey: '19.821.442/0001-05',
+        paymentInfo: '19.821.442/0001-05',
+        active: true,
+      },
+    ],
     totalDebt: 4850.0,
     debtsCount: 1,
   },
@@ -1064,6 +1376,90 @@ export const debtService = {
 
   getDebtsByDebtorId(debtorId: string): Debt[] {
     return debtsState.filter((d) => d.debtorId === debtorId);
+  },
+
+  /**
+   * Adiciona um novo telefone ao cadastro do devedor
+   */
+  addDebtorPhone(debtorId: string, phone: Omit<DebtorPhone, 'id'>): DebtorPhone | null {
+    const debtor = debtorsState.find((d) => d.id === debtorId);
+    if (!debtor) return null;
+    const newPhone: DebtorPhone = {
+      ...phone,
+      id: `ph-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+    };
+    if (!debtor.phones) debtor.phones = [];
+    debtor.phones.push(newPhone);
+    notifyListeners();
+    return newPhone;
+  },
+
+  /**
+   * Atualiza os dados de um telefone do devedor
+   */
+  updateDebtorPhone(debtorId: string, phoneId: string, updates: Partial<DebtorPhone>): boolean {
+    const debtor = debtorsState.find((d) => d.id === debtorId);
+    if (!debtor || !debtor.phones) return false;
+    const phone = debtor.phones.find((p) => p.id === phoneId);
+    if (!phone) return false;
+    Object.assign(phone, updates);
+    notifyListeners();
+    return true;
+  },
+
+  /**
+   * Alterna status ativo/inativo do telefone (sem exclusão física)
+   */
+  toggleDebtorPhoneStatus(debtorId: string, phoneId: string): boolean {
+    const debtor = debtorsState.find((d) => d.id === debtorId);
+    if (!debtor || !debtor.phones) return false;
+    const phone = debtor.phones.find((p) => p.id === phoneId);
+    if (!phone) return false;
+    phone.active = !phone.active;
+    notifyListeners();
+    return true;
+  },
+
+  /**
+   * Adiciona um novo dado de pagamento/PIX ao devedor
+   */
+  addDebtorPaymentData(debtorId: string, paymentData: Omit<DebtorPaymentData, 'id'>): DebtorPaymentData | null {
+    const debtor = debtorsState.find((d) => d.id === debtorId);
+    if (!debtor) return null;
+    const newPayment: DebtorPaymentData = {
+      ...paymentData,
+      id: `pay-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+    };
+    if (!debtor.paymentData) debtor.paymentData = [];
+    debtor.paymentData.push(newPayment);
+    notifyListeners();
+    return newPayment;
+  },
+
+  /**
+   * Atualiza dados de pagamento/PIX do devedor
+   */
+  updateDebtorPaymentData(debtorId: string, paymentId: string, updates: Partial<DebtorPaymentData>): boolean {
+    const debtor = debtorsState.find((d) => d.id === debtorId);
+    if (!debtor || !debtor.paymentData) return false;
+    const payment = debtor.paymentData.find((p) => p.id === paymentId);
+    if (!payment) return false;
+    Object.assign(payment, updates);
+    notifyListeners();
+    return true;
+  },
+
+  /**
+   * Alterna status ativo/inativo do dado de pagamento (sem exclusão física)
+   */
+  toggleDebtorPaymentDataStatus(debtorId: string, paymentId: string): boolean {
+    const debtor = debtorsState.find((d) => d.id === debtorId);
+    if (!debtor || !debtor.paymentData) return false;
+    const payment = debtor.paymentData.find((p) => p.id === paymentId);
+    if (!payment) return false;
+    payment.active = !payment.active;
+    notifyListeners();
+    return true;
   },
 
   /**

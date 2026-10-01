@@ -44,6 +44,30 @@ export type ContactResult =
   | 'Promessa Não Cumprida'
   | 'Outro';
 
+export type DebtorPhoneType = 'Fixo' | 'Celular' | 'Comercial' | 'Financeiro' | 'Outro';
+
+export interface DebtorPhone {
+  id: string;
+  number: string;
+  type: DebtorPhoneType;
+  description: string;
+  hasWhatsApp: boolean;
+  active: boolean;
+}
+
+export type PaymentDataType = 'PIX' | 'Outro';
+export type PixKeyType = 'CPF' | 'CNPJ' | 'E-mail' | 'Telefone' | 'Aleatória' | 'Outro';
+
+export interface DebtorPaymentData {
+  id: string;
+  type: PaymentDataType;
+  description: string;
+  pixKeyType?: PixKeyType;
+  pixKey?: string;
+  paymentInfo: string;
+  active: boolean;
+}
+
 export interface Debtor {
   id: string;
   erpCode: string;
@@ -61,6 +85,8 @@ export interface Debtor {
     email: string;
     address: string;
   };
+  phones: DebtorPhone[];
+  paymentData: DebtorPaymentData[];
   totalDebt: number;
   debtsCount: number;
 }
