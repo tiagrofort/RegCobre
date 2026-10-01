@@ -179,6 +179,31 @@ export const FastLogDrawer: React.FC<FastLogDrawerProps> = ({
             </div>
           )}
 
+          {/* Banner em destaque: ABRIR FICHA DA COBRANÇA */}
+          {onOpenFicha && debt && (
+            <button
+              type="button"
+              onClick={() => {
+                onClose();
+                onOpenFicha(debt.id);
+              }}
+              className="w-full py-2.5 px-3.5 rounded-lg bg-surface-container hover:bg-surface-variant text-primary font-title-md text-xs font-bold flex items-center justify-between transition-colors border border-outline-variant/30 cursor-pointer shadow-2xs group"
+            >
+              <div className="flex items-center gap-2">
+                <span className="material-symbols-outlined text-[18px] text-secondary">
+                  assignment
+                </span>
+                <span>ABRIR FICHA DA COBRANÇA</span>
+              </div>
+              <div className="flex items-center gap-1 text-[11px] text-on-surface-variant group-hover:text-primary font-semibold">
+                <span>Ver histórico &amp; detalhes</span>
+                <span className="material-symbols-outlined text-[15px] group-hover:translate-x-0.5 transition-transform">
+                  arrow_forward
+                </span>
+              </div>
+            </button>
+          )}
+
           {/* Section: Canal de Contato */}
           <div>
             <div className="flex items-center justify-between mb-space-xs">

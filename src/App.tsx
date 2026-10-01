@@ -24,6 +24,7 @@ const MainAppContent: React.FC = () => {
 
   // Navigation State
   const [currentScreen, setCurrentScreen] = useState<NavScreen>('trabalho-de-hoje');
+  const [originScreen, setOriginScreen] = useState<NavScreen>('trabalho-de-hoje');
   const [selectedDebtId, setSelectedDebtId] = useState<string>('10002');
   const [selectedDebtorId, setSelectedDebtorId] = useState<string>('d-andrade');
 
@@ -103,6 +104,9 @@ const MainAppContent: React.FC = () => {
   }
 
   const handleSelectDebtAndOpenFicha = (debtId: string) => {
+    if (currentScreen !== 'ficha-cobranca') {
+      setOriginScreen(currentScreen);
+    }
     setSelectedDebtId(debtId);
     setCurrentScreen('ficha-cobranca');
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -190,6 +194,8 @@ const MainAppContent: React.FC = () => {
           {currentScreen === 'ficha-cobranca' && (
             <FichaCobrancaView
               debtId={selectedDebtId}
+              originScreen={originScreen}
+              onBack={() => setCurrentScreen(originScreen)}
               onBackToPortfolio={() => setCurrentScreen('minha-carteira')}
               onBackToTodayWork={() => setCurrentScreen('trabalho-de-hoje')}
               onSelectAnotherDebt={(newDebtId: string) => {
