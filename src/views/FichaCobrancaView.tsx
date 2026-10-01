@@ -128,30 +128,20 @@ export const FichaCobrancaView: React.FC<FichaCobrancaViewProps> = ({
     setTimeout(() => setToastMsg(null), 3500);
   };
 
-  const debtorPhones: DebtorPhone[] = (debtor.phones && debtor.phones.length > 0)
-    ? debtor.phones
-    : [
-        {
-          id: 'ph-fallback-1',
-          number: debtor.mainContact.phoneMobile || debtor.mainContact.phoneFixed || '(11) 98822-1044',
-          type: 'Celular',
-          description: debtor.mainContact.name || 'Contato Principal',
-          hasWhatsApp: debtor.mainContact.hasWhatsApp ?? true,
-          active: true,
-        },
-      ];
-
+  // Coleção oficial de telefones do devedor (sem inventar fallback fictício)
+  const debtorPhones: DebtorPhone[] = debtor.phones || [];
   const activePhones = debtorPhones.filter((p) => p.active);
-  const primaryPhone = activePhones[0] || debtorPhones[0];
+  const primaryPhone = activePhones[0] || null;
 
+  // Coleção oficial de dados de pagamento/PIX do devedor (sem inventar fallback fictício)
   const debtorPayments: DebtorPaymentData[] = debtor.paymentData || [];
-  const activePayments: DebtorPaymentData[] = debtorPayments.filter((p) => p.active);
-  const primaryPayment = activePayments[0] || debtorPayments[0];
+  const activePayments = debtorPayments.filter((p) => p.active);
+  const primaryPayment = activePayments[0] || null;
 
   const handleCopyPaymentInfo = (payment?: DebtorPaymentData) => {
     const target = payment || primaryPayment;
     if (!target) {
-      showToast('Nenhum dado de pagamento cadastrado para este devedor.');
+      showToast('Nenhum dado de pagamento cadastrado.');
       return;
     }
     const textToCopy = target.paymentInfo || target.pixKey || '';
@@ -160,9 +150,14 @@ export const FichaCobrancaView: React.FC<FichaCobrancaViewProps> = ({
     setIsPaymentDropdownOpen(false);
   };
 
-  const handleCopyPhoneNumber = (phone: string, desc?: string) => {
-    navigator.clipboard?.writeText(phone);
-    showToast(`Telefone copiado: ${phone}${desc ? ` (${desc})` : ''}`);
+  const handleCopyPhoneNumber = (phone?: string, desc?: string) => {
+    const num = phone || (primaryPhone ? primaryPhone.number : '');
+    if (!num) {
+      showToast('Nenhum telefone cadastrado.');
+      return;
+    }
+    navigator.clipboard?.writeText(num);
+    showToast(`Telefone copiado: ${num}${desc ? ` (${desc})` : ''}`);
     setIsPhoneDropdownOpen(false);
   };
 
@@ -1635,83 +1630,91 @@ export const FichaCobrancaView: React.FC<FichaCobrancaViewProps> = ({
                   </button>
                 </div>
 
-                <div className="flex flex-col gap-1.5">
-                  {debtorPhones.map((ph) => (
-                    <div
-                      key={ph.id}
-                      className={`p-2 rounded-lg flex items-center justify-between gap-2 border transition-colors ${
-                        ph.active
-                          ? 'bg-surface-container-low border-outline-variant/20 hover:border-secondary/30'
-                          : 'bg-surface-container/50 border-dashed border-outline-variant/30 opacity-60'
-                      }`}
-                    >
-                      <div className="flex flex-col min-w-0 flex-1">
-                        <div className="flex items-center gap-1.5 flex-wrap">
-                          <span className="font-data-mono font-bold text-xs text-on-surface">
-                            {ph.number}
-                          </span>
-                          <span className="px-1.5 py-0.2 rounded bg-surface-container-highest text-[9px] font-semibold text-on-surface-variant">
-                            {ph.type}
-                          </span>
-                          {ph.hasWhatsApp && (
+                {debtorPhones.length === 0 ? (
+                  <div className="p-2.5 bg-surface-container-low rounded-lg border border-dashed border-outline-variant/30 text-center">
+                    <p className="text-xs text-on-surface-variant italic">
+                      Nenhum telefone cadastrado.
+                    </p>
+                  </div>
+                ) : (
+                  <div className="flex flex-col gap-1.5">
+                    {debtorPhones.map((ph) => (
+                      <div
+                        key={ph.id}
+                        className={`p-2 rounded-lg flex items-center justify-between gap-2 border transition-colors ${
+                          ph.active
+                            ? 'bg-surface-container-low border-outline-variant/20 hover:border-secondary/30'
+                            : 'bg-surface-container/50 border-dashed border-outline-variant/30 opacity-60'
+                        }`}
+                      >
+                        <div className="flex flex-col min-w-0 flex-1">
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <span className="font-data-mono font-bold text-xs text-on-surface">
+                              {ph.number}
+                            </span>
+                            <span className="px-1.5 py-0.2 rounded bg-surface-container-highest text-[9px] font-semibold text-on-surface-variant">
+                              {ph.type}
+                            </span>
+                            {ph.hasWhatsApp && (
+                              <span
+                                className="inline-flex items-center text-emerald-700 font-bold text-[10px] gap-0.5"
+                                title="Possui WhatsApp"
+                              >
+                                <span className="material-symbols-outlined text-[13px]">chat</span>
+                                <span>WhatsApp</span>
+                              </span>
+                            )}
                             <span
-                              className="inline-flex items-center text-emerald-700 font-bold text-[10px] gap-0.5"
-                              title="Possui WhatsApp"
+                              className={`px-1 py-0.2 rounded font-badge-sm text-[9px] font-bold ${
+                                ph.active
+                                  ? 'bg-secondary-container text-on-secondary-container'
+                                  : 'bg-surface-container-highest text-outline'
+                              }`}
                             >
-                              <span className="material-symbols-outlined text-[13px]">chat</span>
-                              <span>WhatsApp</span>
+                              {ph.active ? 'Ativo' : 'Inativo'}
+                            </span>
+                          </div>
+                          {ph.description && (
+                            <span className="text-[10px] text-on-surface-variant truncate mt-0.5">
+                              {ph.description}
                             </span>
                           )}
-                          <span
-                            className={`px-1 py-0.2 rounded font-badge-sm text-[9px] font-bold ${
-                              ph.active
-                                ? 'bg-secondary-container text-on-secondary-container'
-                                : 'bg-surface-container-highest text-outline'
-                            }`}
-                          >
-                            {ph.active ? 'Ativo' : 'Inativo'}
-                          </span>
                         </div>
-                        {ph.description && (
-                          <span className="text-[10px] text-on-surface-variant truncate mt-0.5">
-                            {ph.description}
-                          </span>
-                        )}
-                      </div>
 
-                      <div className="flex items-center gap-0.5 shrink-0">
-                        <button
-                          type="button"
-                          onClick={() => handleCopyPhoneNumber(ph.number, ph.description)}
-                          className="p-1 rounded hover:bg-surface-container text-on-surface-variant hover:text-secondary transition-colors cursor-pointer"
-                          title={`Copiar telefone ${ph.number}`}
-                        >
-                          <span className="material-symbols-outlined text-[15px]">content_copy</span>
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => handleOpenEditPhone(ph)}
-                          className="p-1 rounded hover:bg-surface-container text-on-surface-variant hover:text-primary transition-colors cursor-pointer"
-                          title="Editar telefone"
-                        >
-                          <span className="material-symbols-outlined text-[15px]">edit</span>
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => handleTogglePhoneActive(ph)}
-                          className={`px-1.5 py-0.5 rounded text-[10px] font-semibold transition-colors cursor-pointer ${
-                            ph.active
-                              ? 'text-on-surface-variant hover:text-error hover:bg-error-container/40'
-                              : 'text-secondary hover:bg-secondary-container/40'
-                          }`}
-                          title={ph.active ? 'Desativar telefone (sem exclusão física)' : 'Reativar telefone'}
-                        >
-                          {ph.active ? 'Desativar' : 'Ativar'}
-                        </button>
+                        <div className="flex items-center gap-0.5 shrink-0">
+                          <button
+                            type="button"
+                            onClick={() => handleCopyPhoneNumber(ph.number, ph.description)}
+                            className="p-1 rounded hover:bg-surface-container text-on-surface-variant hover:text-secondary transition-colors cursor-pointer"
+                            title={`Copiar telefone ${ph.number}`}
+                          >
+                            <span className="material-symbols-outlined text-[15px]">content_copy</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleOpenEditPhone(ph)}
+                            className="p-1 rounded hover:bg-surface-container text-on-surface-variant hover:text-primary transition-colors cursor-pointer"
+                            title="Editar telefone"
+                          >
+                            <span className="material-symbols-outlined text-[15px]">edit</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleTogglePhoneActive(ph)}
+                            className={`px-1.5 py-0.5 rounded text-[10px] font-semibold transition-colors cursor-pointer ${
+                              ph.active
+                                ? 'text-on-surface-variant hover:text-error hover:bg-error-container/40'
+                                : 'text-secondary hover:bg-secondary-container/40'
+                            }`}
+                            title={ph.active ? 'Desativar telefone (sem exclusão física)' : 'Reativar telefone'}
+                          >
+                            {ph.active ? 'Desativar' : 'Ativar'}
+                          </button>
+                        </div>
                       </div>
-                    </div>
-                  ))}
-                </div>
+                    ))}
+                  </div>
+                )}
               </div>
 
               {/* DADOS PARA PAGAMENTO (CADASTRO DO DEVEDOR) */}

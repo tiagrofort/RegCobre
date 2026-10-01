@@ -79,14 +79,15 @@ export interface Debtor {
   mainContact: {
     name: string;
     role: string;
-    phoneFixed: string;
-    phoneMobile: string;
-    hasWhatsApp: boolean;
     email: string;
     address: string;
+    // Campos legados mantidos exclusivamente para compatibilidade com dados antigos
+    phoneFixed?: string;
+    phoneMobile?: string;
+    hasWhatsApp?: boolean;
   };
-  phones: DebtorPhone[];
-  paymentData: DebtorPaymentData[];
+  phones: DebtorPhone[]; // Coleção oficial de telefones do devedor
+  paymentData: DebtorPaymentData[]; // Coleção oficial de dados de pagamento/PIX do devedor
   totalDebt: number;
   debtsCount: number;
 }

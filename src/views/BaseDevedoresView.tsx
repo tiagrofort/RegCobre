@@ -426,7 +426,7 @@ export const BaseDevedoresView: React.FC<BaseDevedoresViewProps> = ({
               <div className="p-3 flex flex-col gap-2">
                 {(!selectedDebtor.phones || selectedDebtor.phones.length === 0) ? (
                   <p className="text-xs text-on-surface-variant italic py-2 text-center">
-                    Nenhum telefone adicional cadastrado para este devedor.
+                    Nenhum telefone cadastrado.
                   </p>
                 ) : (
                   selectedDebtor.phones.map((ph) => (
@@ -541,7 +541,7 @@ export const BaseDevedoresView: React.FC<BaseDevedoresViewProps> = ({
                 {(!selectedDebtor.paymentData || selectedDebtor.paymentData.length === 0) ? (
                   <div className="p-4 bg-surface-container-low rounded-lg border border-dashed border-outline-variant/30 text-center">
                     <p className="text-xs text-on-surface-variant italic">
-                      Nenhum dado de pagamento cadastrado para este devedor.
+                      Nenhum dado de pagamento cadastrado.
                     </p>
                   </div>
                 ) : (

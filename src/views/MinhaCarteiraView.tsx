@@ -466,11 +466,52 @@ export const MinhaCarteiraView: React.FC<MinhaCarteiraViewProps> = ({
                     CONTATO PRINCIPAL / FINANCEIRO
                   </span>
                   <div className="font-semibold text-primary">{selectedDebtor.mainContact.name} ({selectedDebtor.mainContact.role})</div>
-                  <div className="text-on-surface-variant flex items-center gap-3">
-                    <span>{selectedDebtor.mainContact.phoneFixed}</span>
-                    <span className="text-secondary font-semibold">{selectedDebtor.mainContact.phoneMobile} (WhatsApp)</span>
-                  </div>
-                  <div className="text-on-surface-variant font-mono">{selectedDebtor.mainContact.email}</div>
+                  
+                  {/* Telefones da Coleção Oficial do Devedor */}
+                  {selectedDebtor.phones && selectedDebtor.phones.length > 0 ? (
+                    <div className="flex flex-col gap-1 pt-0.5">
+                      {selectedDebtor.phones
+                        .filter((p) => p.active)
+                        .map((ph) => (
+                          <div key={ph.id} className="flex items-center justify-between text-xs">
+                            <div className="flex items-center gap-1.5">
+                              <span className="font-data-mono font-bold text-on-surface">
+                                {ph.number}
+                              </span>
+                              <span className="px-1.5 py-0.2 rounded bg-surface-container text-[10px] text-on-surface-variant font-medium">
+                                {ph.type}
+                              </span>
+                              {ph.hasWhatsApp && (
+                                <span className="inline-flex items-center text-emerald-700 font-bold text-[10px] gap-0.5" title="WhatsApp Ativo">
+                                  <span className="material-symbols-outlined text-[13px]">chat</span>
+                                  <span>WhatsApp</span>
+                                </span>
+                              )}
+                            </div>
+                            {ph.description && (
+                              <span className="text-[10px] text-on-surface-variant truncate max-w-[120px]">
+                                {ph.description}
+                              </span>
+                            )}
+                          </div>
+                        ))}
+                    </div>
+                  ) : (selectedDebtor.mainContact.phoneMobile || selectedDebtor.mainContact.phoneFixed) ? (
+                    <div className="text-on-surface-variant flex items-center gap-3">
+                      {selectedDebtor.mainContact.phoneFixed && <span>{selectedDebtor.mainContact.phoneFixed}</span>}
+                      {selectedDebtor.mainContact.phoneMobile && (
+                        <span className="text-secondary font-semibold">
+                          {selectedDebtor.mainContact.phoneMobile} {selectedDebtor.mainContact.hasWhatsApp ? '(WhatsApp)' : ''}
+                        </span>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="text-xs text-on-surface-variant italic py-0.5">
+                      Nenhum telefone cadastrado.
+                    </div>
+                  )}
+
+                  <div className="text-on-surface-variant font-mono text-[11px] pt-0.5">{selectedDebtor.mainContact.email}</div>
                 </div>
               )}
 
