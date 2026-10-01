@@ -7,9 +7,11 @@ import {
   PromiseRecord,
   ScheduledReturnRecord,
   PaymentRecord,
+  AgendaDiariaCobranca,
+  ResumoProducaoDia,
 } from '../types';
 
-// Initial Mock Debtors
+// Initial Mock Debtors (focused strictly on collection)
 const INITIAL_DEBTORS: Debtor[] = [
   {
     id: 'd-andrade',
@@ -19,16 +21,14 @@ const INITIAL_DEBTORS: Debtor[] = [
     cnpjCpf: '14.892.301/0001-44',
     type: 'PJ',
     status: 'Ativa',
-    creditScore: 740,
-    creditStatus: 'Crédito ERP Suspenso',
     mainContact: {
       name: 'Dr. Marcos P. de Souza',
       role: 'Diretor Financeiro / Sócio Administrador',
-      phoneFixed: '(11) 3452-8800 (Fixo)',
-      phoneMobile: '(11) 98822-1044 (Móvel)',
+      phoneFixed: '(11) 3452-8800',
+      phoneMobile: '(11) 98822-1044',
       hasWhatsApp: true,
       email: 'financeiro@metalurgicaandrade.com.br',
-      address: 'Av. Industrial, 4200 - Distrito Industrial - Guarulhos/SP - CEP: 07170-000',
+      address: 'Av. Industrial, 4200 - Distrito Industrial - Guarulhos/SP',
     },
     totalDebt: 26850.0,
     debtsCount: 3,
@@ -41,8 +41,6 @@ const INITIAL_DEBTORS: Debtor[] = [
     cnpjCpf: '08.120.994/0001-90',
     type: 'PJ',
     status: 'Ativa',
-    creditScore: 680,
-    creditStatus: 'Em Restrição Comercial',
     mainContact: {
       name: 'Eng. Gilberto Rocha',
       role: 'Gerente Administrativo',
@@ -63,8 +61,6 @@ const INITIAL_DEBTORS: Debtor[] = [
     cnpjCpf: '02.441.563/0002-12',
     type: 'PJ',
     status: 'Ativa',
-    creditScore: 590,
-    creditStatus: 'Alerta de Inadimplência',
     mainContact: {
       name: 'Sr. Valdemar Alvorada',
       role: 'Sócio Diretor',
@@ -85,8 +81,6 @@ const INITIAL_DEBTORS: Debtor[] = [
     cnpjCpf: '19.330.122/0003-88',
     type: 'PJ',
     status: 'Ativa',
-    creditScore: 420,
-    creditStatus: 'Restrição Serasa Ativa',
     mainContact: {
       name: 'Claudio Ferreira',
       role: 'Contador Responsável',
@@ -107,8 +101,6 @@ const INITIAL_DEBTORS: Debtor[] = [
     cnpjCpf: '31.002.812/0001-09',
     type: 'PJ',
     status: 'Ativa',
-    creditScore: 610,
-    creditStatus: 'Regular com Atraso',
     mainContact: {
       name: 'Renata Lemos',
       role: 'Supervisora Financeira',
@@ -129,8 +121,6 @@ const INITIAL_DEBTORS: Debtor[] = [
     cnpjCpf: '382.910.428-11',
     type: 'PF',
     status: 'Ativa',
-    creditScore: 710,
-    creditStatus: 'Cadastro Positivo',
     mainContact: {
       name: 'Roberto Sampaio',
       role: 'Titular / Avalista',
@@ -138,7 +128,7 @@ const INITIAL_DEBTORS: Debtor[] = [
       phoneMobile: '(11) 98222-4411',
       hasWhatsApp: true,
       email: 'roberto.sampaio@consultoria.com.br',
-      address: 'Rua Bela Cintra, 1420, Apto 82 - Jardins - São Paulo/SP',
+      address: 'Rua Bela Cintra, 1420 - São Paulo/SP',
     },
     totalDebt: 3345.0,
     debtsCount: 1,
@@ -151,8 +141,6 @@ const INITIAL_DEBTORS: Debtor[] = [
     cnpjCpf: '05.811.234/0001-22',
     type: 'PJ',
     status: 'Ativa',
-    creditScore: 650,
-    creditStatus: 'Crédito Bloqueado',
     mainContact: {
       name: 'Maurício Santos',
       role: 'Financeiro',
@@ -173,8 +161,6 @@ const INITIAL_DEBTORS: Debtor[] = [
     cnpjCpf: '14.281.992/0001-44',
     type: 'PJ',
     status: 'Ativa',
-    creditScore: 580,
-    creditStatus: 'Negociação Urgente',
     mainContact: {
       name: 'Roberto Camargo',
       role: 'Gerente Financeiro',
@@ -195,8 +181,6 @@ const INITIAL_DEBTORS: Debtor[] = [
     cnpjCpf: '19.821.442/0001-05',
     type: 'PJ',
     status: 'Ativa',
-    creditScore: 820,
-    creditStatus: 'Bom Pagador Histórico',
     mainContact: {
       name: 'Dra. Mariana Lucas',
       role: 'Diretora Médica / Sócia',
@@ -204,7 +188,7 @@ const INITIAL_DEBTORS: Debtor[] = [
       phoneMobile: '(11) 99441-2233',
       hasWhatsApp: true,
       email: 'dra.mariana@clinicasaolucas.com.br',
-      address: 'Rua Itapeva, 500 - Bela Vista - São Paulo/SP',
+      address: 'Rua Itapeva, 500 - São Paulo/SP',
     },
     totalDebt: 4850.0,
     debtsCount: 1,
@@ -213,7 +197,7 @@ const INITIAL_DEBTORS: Debtor[] = [
 
 // Initial Debts Data
 const INITIAL_DEBTS: Debt[] = [
-  // 1. Indústria Metalúrgica Andrade - Título #10002 (Primary featured record)
+  // 1. Indústria Metalúrgica Andrade - Título #10002
   {
     id: '10002',
     debtorId: 'd-andrade',
@@ -359,7 +343,7 @@ const INITIAL_DEBTS: Debt[] = [
         channel: 'Outro',
         result: 'Promessa Não Cumprida',
         notes:
-          'Pagamento prometido para 25/10/2024 no valor de R$ 8.950,00 não foi identificado no extrato conciliado do ERP TOTVS. Notificação de descumprimento disparada para a gerência de cobrança e sinalizador de quebra de acordo vinculado à ficha.',
+          'Pagamento prometido para 25/10/2024 no valor de R$ 8.950,00 não foi identificado no extrato do ERP. Notificação de descumprimento disparada para a gerência de cobrança e sinalizador de quebra de acordo vinculado à ficha.',
       },
       {
         id: 'h-4',
@@ -377,7 +361,7 @@ const INITIAL_DEBTS: Debt[] = [
     ],
   },
 
-  // 1b. Indústria Metalúrgica Andrade - Título #10003 (Parc 02/03)
+  // 1b. Indústria Metalúrgica Andrade - Título #10003
   {
     id: '10003',
     debtorId: 'd-andrade',
@@ -420,7 +404,7 @@ const INITIAL_DEBTS: Debt[] = [
     ],
   },
 
-  // 1c. Indústria Metalúrgica Andrade - Título #10004 (Parc 03/03)
+  // 1c. Indústria Metalúrgica Andrade - Título #10004
   {
     id: '10004',
     debtorId: 'd-andrade',
@@ -468,19 +452,19 @@ const INITIAL_DEBTS: Debt[] = [
     interestFine: 1250.0,
     currentValue: 15750.0,
     assignedTo: {
-      id: 'maria-oliveira',
-      name: 'Maria Oliveira',
-      role: 'Cobradora Pleno',
+      id: 'carlos-eduardo',
+      name: 'Carlos Eduardo',
+      role: 'Cobrador Sênior',
     },
     status: 'pago',
     statusLabel: 'Pago / Liquidado',
     lastContact: {
       date: '04/11/2024',
       time: '10:40',
-      operatorName: 'Maria Oliveira',
+      operatorName: 'Carlos Eduardo',
       channel: 'Ligação',
       result: 'Pagou',
-      summary: 'Por Maria Oliveira (Ligação)',
+      summary: 'Por Carlos Eduardo (Ligação)',
     },
     promises: [
       {
@@ -489,7 +473,7 @@ const INITIAL_DEBTS: Debt[] = [
         dateRegistered: '01/11/2024',
         promisedDate: '04/11/2024',
         promisedValue: 14500.0,
-        operatorName: 'Maria Oliveira',
+        operatorName: 'Carlos Eduardo',
         status: 'Cumprida / Liquidada',
         notes: 'Comprovante TED enviado e validado.',
       },
@@ -501,8 +485,7 @@ const INITIAL_DEBTS: Debt[] = [
         debtId: '10001',
         date: '04/11/2024',
         value: 14500.0,
-        method: 'TED Conciliado',
-        conciliationCode: 'TOTVS-TED-98214',
+        method: 'TED',
         status: 'Liquidado',
       },
     ],
@@ -513,11 +496,11 @@ const INITIAL_DEBTS: Debt[] = [
         timestamp: '2024-11-04T10:40:00',
         dateFormatted: '04/11/2024',
         timeFormatted: '10:40',
-        operatorId: 'maria-oliveira',
-        operatorName: 'Maria Oliveira',
+        operatorId: 'carlos-eduardo',
+        operatorName: 'Carlos Eduardo',
         channel: 'Ligação',
         result: 'Pagou',
-        notes: 'Confirmado recebimento de TED no valor de R$ 14.500,00 conciliado no ERP TOTVS.',
+        notes: 'Confirmado recebimento de TED no valor de R$ 14.500,00.',
         attachedPayment: {
           paymentDate: '04/11/2024',
           receivedValue: 14500.0,
@@ -599,7 +582,144 @@ const INITIAL_DEBTS: Debt[] = [
     ],
   },
 
-  // 4. Distribuidora Brasil Norte - Título #09871
+  // 4. Translog Brasil Ltda - Título #10482
+  {
+    id: '10482',
+    debtorId: 'd-translog',
+    debtorName: 'Translog Brasil Ltda',
+    debtorTradeName: 'Translog Logística',
+    debtorCnpjCpf: '14.281.992/0001-44',
+    debtorType: 'PJ',
+    erpCode: '#6210',
+    titleNumber: '#10482',
+    installment: '01/02',
+    invoiceNumber: 'NF-e 9918',
+    dueDate: '2024-10-14',
+    daysOverdue: 21,
+    originalValue: 18450.0,
+    interestFine: 520.0,
+    currentValue: 18970.0,
+    assignedTo: {
+      id: 'carlos-eduardo',
+      name: 'Carlos Eduardo',
+      role: 'Cobrador Sênior',
+    },
+    status: 'retorno_agendado',
+    statusLabel: 'Retorno Agendado (Urgente)',
+    lastContact: {
+      date: '03/11/2024',
+      time: '16:45',
+      operatorName: 'Carlos Eduardo',
+      channel: 'Ligação',
+      result: 'Solicitou retorno',
+      summary: 'Boleto minuta encaminhado',
+    },
+    nextReturn: {
+      date: '2024-11-04',
+      time: '09:30',
+      reason:
+        'Retornar com financeiro Roberto para confirmar aprovação do boleto parcelado com entrada de 30%.',
+      assignedToName: 'Carlos Eduardo',
+    },
+    promises: [],
+    scheduledReturns: [
+      {
+        id: 'sr-trans-1',
+        debtId: '10482',
+        date: '04/11/2024',
+        time: '09:30',
+        reason: 'Confirmar boleto parcelado',
+        responsibleName: 'Carlos Eduardo',
+        status: 'Agendado',
+      },
+    ],
+    payments: [],
+    history: [
+      {
+        id: 'h-trans-1',
+        debtId: '10482',
+        timestamp: '2024-11-03T16:45:00',
+        dateFormatted: '03/11/2024',
+        timeFormatted: '16:45',
+        operatorId: 'carlos-eduardo',
+        operatorName: 'Carlos Eduardo',
+        channel: 'Ligação',
+        result: 'Solicitou retorno',
+        notes:
+          'Roberto solicitou contato impreterivelmente pela manhã para formalizar acordo com entrada.',
+      },
+    ],
+  },
+
+  // 5. Clínica Médica São Lucas - Título #10555
+  {
+    id: '10555',
+    debtorId: 'd-sao-lucas',
+    debtorName: 'Clínica Médica São Lucas',
+    debtorTradeName: 'Clínica São Lucas',
+    debtorCnpjCpf: '19.821.442/0001-05',
+    debtorType: 'PJ',
+    erpCode: '#7302',
+    titleNumber: '#10555',
+    installment: 'Única',
+    invoiceNumber: 'NF-e 1022',
+    dueDate: '2024-10-18',
+    daysOverdue: 17,
+    originalValue: 4850.0,
+    interestFine: 120.0,
+    currentValue: 4970.0,
+    assignedTo: {
+      id: 'carlos-eduardo',
+      name: 'Carlos Eduardo',
+      role: 'Cobrador Sênior',
+    },
+    status: 'retorno_agendado',
+    statusLabel: 'Retorno Agendado',
+    lastContact: {
+      date: '31/10/2024',
+      time: '11:20',
+      operatorName: 'Carlos Eduardo',
+      channel: 'Ligação',
+      result: 'Solicitou retorno',
+      summary: 'Devedora em atendimento',
+    },
+    nextReturn: {
+      date: '2024-11-04',
+      time: '14:00',
+      reason:
+        'Retornar pontualmente às 14h para falar com Dra. Mariana durante intervalo de consultas.',
+      assignedToName: 'Carlos Eduardo',
+    },
+    promises: [],
+    scheduledReturns: [
+      {
+        id: 'sr-sl-1',
+        debtId: '10555',
+        date: '04/11/2024',
+        time: '14:00',
+        reason: 'Definição de pagamento via PIX.',
+        responsibleName: 'Carlos Eduardo',
+        status: 'Agendado',
+      },
+    ],
+    payments: [],
+    history: [
+      {
+        id: 'h-sl-1',
+        debtId: '10555',
+        timestamp: '2024-10-31T11:20:00',
+        dateFormatted: '31/10/2024',
+        timeFormatted: '11:20',
+        operatorId: 'carlos-eduardo',
+        operatorName: 'Carlos Eduardo',
+        channel: 'Ligação',
+        result: 'Solicitou retorno',
+        notes: 'Secretária informou que Dra. Mariana só atende cobrança no intervalo das 14h.',
+      },
+    ],
+  },
+
+  // 6. Distribuidora Brasil Norte - Título #09871
   {
     id: '09871',
     debtorId: 'd-brasil-norte',
@@ -617,25 +737,25 @@ const INITIAL_DEBTS: Debt[] = [
     interestFine: 4890.0,
     currentValue: 43290.0,
     assignedTo: {
-      id: 'roberto-silveira',
-      name: 'Roberto Silveira',
-      role: 'Cobrador Júnior',
+      id: 'carlos-eduardo',
+      name: 'Carlos Eduardo',
+      role: 'Cobrador Sênior',
     },
     status: 'quebrou_acordo',
     statusLabel: 'Quebrou Acordo / Promessa Não Cumprida',
     lastContact: {
       date: '04/11/2024',
       time: '09:50',
-      operatorName: 'Roberto Silveira',
+      operatorName: 'Carlos Eduardo',
       channel: 'Ligação',
       result: 'Promessa Não Cumprida',
-      summary: 'Roberto Silveira (Sem Retorno)',
+      summary: 'Carlos Eduardo (Sem Retorno)',
     },
     nextReturn: {
       date: '2024-11-05',
       time: '14:00',
       reason: 'Repactuação urgente - Reacionar devedor.',
-      assignedToName: 'Roberto Silveira',
+      assignedToName: 'Carlos Eduardo',
     },
     promises: [
       {
@@ -644,7 +764,7 @@ const INITIAL_DEBTS: Debt[] = [
         dateRegistered: '28/10/2024',
         promisedDate: '03/11/2024',
         promisedValue: 38400.0,
-        operatorName: 'Roberto Silveira',
+        operatorName: 'Carlos Eduardo',
         status: 'Não Cumprida / Quebrada',
         notes: 'Promessa de R$ 38.400 não cumprida em 03/11.',
       },
@@ -658,8 +778,8 @@ const INITIAL_DEBTS: Debt[] = [
         timestamp: '2024-11-04T09:50:00',
         dateFormatted: '04/11/2024',
         timeFormatted: '09:50',
-        operatorId: 'roberto-silveira',
-        operatorName: 'Roberto Silveira',
+        operatorId: 'carlos-eduardo',
+        operatorName: 'Carlos Eduardo',
         channel: 'Ligação',
         result: 'Promessa Não Cumprida',
         notes: 'Constatada quebra de acordo. Ligado para cobrança sem atendimento.',
@@ -667,7 +787,7 @@ const INITIAL_DEBTS: Debt[] = [
     ],
   },
 
-  // 5. Transporte Vale Verde - Título #10219
+  // 7. Transporte Vale Verde - Título #10219
   {
     id: '10219',
     debtorId: 'd-vale-verde',
@@ -685,19 +805,19 @@ const INITIAL_DEBTS: Debt[] = [
     interestFine: 210.0,
     currentValue: 5630.0,
     assignedTo: {
-      id: 'juliana-mendes',
-      name: 'Juliana Mendes',
-      role: 'Cobradora',
+      id: 'carlos-eduardo',
+      name: 'Carlos Eduardo',
+      role: 'Cobrador Sênior',
     },
     status: 'sem_contato',
     statusLabel: 'Sem Contato Recente',
     lastContact: {
       date: '03/11/2024',
       time: '16:20',
-      operatorName: 'Juliana Mendes',
+      operatorName: 'Carlos Eduardo',
       channel: 'Ligação',
       result: 'Não atende',
-      summary: 'Juliana M. (Caixa Postal)',
+      summary: 'Carlos E. (Caixa Postal)',
     },
     promises: [],
     scheduledReturns: [],
@@ -709,8 +829,8 @@ const INITIAL_DEBTS: Debt[] = [
         timestamp: '2024-11-03T16:20:00',
         dateFormatted: '03/11/2024',
         timeFormatted: '16:20',
-        operatorId: 'juliana-mendes',
-        operatorName: 'Juliana Mendes',
+        operatorId: 'carlos-eduardo',
+        operatorName: 'Carlos Eduardo',
         channel: 'Ligação',
         result: 'Não atende',
         notes: 'Ligação realizada para financeiro. Caixa postal.',
@@ -718,7 +838,7 @@ const INITIAL_DEBTS: Debt[] = [
     ],
   },
 
-  // 6. Roberto Sampaio Pinto - Título #10304
+  // 8. Roberto Sampaio Pinto - Título #10304
   {
     id: '10304',
     debtorId: 'd-roberto-sampaio',
@@ -799,7 +919,7 @@ const INITIAL_DEBTS: Debt[] = [
     ],
   },
 
-  // 7. Auto Peças Central Sul - Título #10190
+  // 9. Auto Peças Central Sul - Título #10190
   {
     id: '10190',
     debtorId: 'd-central-sul',
@@ -817,19 +937,19 @@ const INITIAL_DEBTS: Debt[] = [
     interestFine: 890.0,
     currentValue: 12180.0,
     assignedTo: {
-      id: 'maria-oliveira',
-      name: 'Maria Oliveira',
-      role: 'Cobradora Pleno',
+      id: 'carlos-eduardo',
+      name: 'Carlos Eduardo',
+      role: 'Cobrador Sênior',
     },
     status: 'pago',
     statusLabel: 'Pago / Liquidado',
     lastContact: {
       date: '03/11/2024',
       time: '11:30',
-      operatorName: 'Maria Oliveira',
+      operatorName: 'Carlos Eduardo',
       channel: 'Ligação',
       result: 'Pagou',
-      summary: 'Maria Oliveira (Boleto Pago)',
+      summary: 'Carlos Eduardo (Boleto Pago)',
     },
     promises: [],
     scheduledReturns: [],
@@ -839,8 +959,6 @@ const INITIAL_DEBTS: Debt[] = [
         debtId: '10190',
         date: '03/11/2024',
         value: 11290.0,
-        method: 'Boleto Bancário',
-        conciliationCode: 'TOTVS-BOL-44120',
         status: 'Liquidado',
       },
     ],
@@ -851,8 +969,8 @@ const INITIAL_DEBTS: Debt[] = [
         timestamp: '2024-11-03T11:30:00',
         dateFormatted: '03/11/2024',
         timeFormatted: '11:30',
-        operatorId: 'maria-oliveira',
-        operatorName: 'Maria Oliveira',
+        operatorId: 'carlos-eduardo',
+        operatorName: 'Carlos Eduardo',
         channel: 'Ligação',
         result: 'Pagou',
         notes: 'Pagamento conciliado via Boleto Bancário.',
@@ -863,148 +981,39 @@ const INITIAL_DEBTS: Debt[] = [
       },
     ],
   },
-
-  // 8. Translog Brasil Ltda - Título #10482
-  {
-    id: '10482',
-    debtorId: 'd-translog',
-    debtorName: 'Translog Brasil Ltda',
-    debtorTradeName: 'Translog Logística',
-    debtorCnpjCpf: '14.281.992/0001-44',
-    debtorType: 'PJ',
-    erpCode: '#6210',
-    titleNumber: '#10482',
-    installment: '01/02',
-    invoiceNumber: 'NF-e 9918',
-    dueDate: '2024-10-14',
-    daysOverdue: 21,
-    originalValue: 18450.0,
-    interestFine: 520.0,
-    currentValue: 18970.0,
-    assignedTo: {
-      id: 'carlos-eduardo',
-      name: 'Carlos Eduardo',
-      role: 'Cobrador Sênior',
-    },
-    status: 'retorno_agendado',
-    statusLabel: 'Retorno Agendado (Urgente)',
-    lastContact: {
-      date: '03/11/2024',
-      time: '16:45',
-      operatorName: 'Carlos Eduardo',
-      channel: 'Ligação',
-      result: 'Solicitou retorno',
-      summary: 'Boleto minuta encaminhado',
-    },
-    nextReturn: {
-      date: '2024-11-04',
-      time: '09:30',
-      reason:
-        'Retornar com financeiro Roberto para confirmar aprovação do boleto parcelado com entrada de 30%.',
-      assignedToName: 'Carlos Eduardo',
-    },
-    promises: [],
-    scheduledReturns: [
-      {
-        id: 'sr-trans-1',
-        debtId: '10482',
-        date: '04/11/2024',
-        time: '09:30',
-        reason: 'Confirmar boleto parcelado',
-        responsibleName: 'Carlos Eduardo',
-        status: 'Agendado',
-      },
-    ],
-    payments: [],
-    history: [
-      {
-        id: 'h-trans-1',
-        debtId: '10482',
-        timestamp: '2024-11-03T16:45:00',
-        dateFormatted: '03/11/2024',
-        timeFormatted: '16:45',
-        operatorId: 'carlos-eduardo',
-        operatorName: 'Carlos Eduardo',
-        channel: 'Ligação',
-        result: 'Solicitou retorno',
-        notes:
-          'Roberto solicitou contato impreterivelmente pela manhã para formalizar acordo com entrada.',
-      },
-    ],
-  },
-
-  // 9. Clínica Médica São Lucas - Título #10555
-  {
-    id: '10555',
-    debtorId: 'd-sao-lucas',
-    debtorName: 'Clínica Médica São Lucas',
-    debtorTradeName: 'Clínica São Lucas',
-    debtorCnpjCpf: '19.821.442/0001-05',
-    debtorType: 'PJ',
-    erpCode: '#7302',
-    titleNumber: '#10555',
-    installment: 'Única',
-    invoiceNumber: 'NF-e 1022',
-    dueDate: '2024-10-18',
-    daysOverdue: 17,
-    originalValue: 4850.0,
-    interestFine: 120.0,
-    currentValue: 4970.0,
-    assignedTo: {
-      id: 'carlos-eduardo',
-      name: 'Carlos Eduardo',
-      role: 'Cobrador Sênior',
-    },
-    status: 'retorno_agendado',
-    statusLabel: 'Retorno Agendado',
-    lastContact: {
-      date: '31/10/2024',
-      time: '11:20',
-      operatorName: 'Carlos Eduardo',
-      channel: 'Ligação',
-      result: 'Solicitou retorno',
-      summary: 'Devedora em atendimento',
-    },
-    nextReturn: {
-      date: '2024-11-04',
-      time: '14:00',
-      reason:
-        'Retornar pontualmente às 14h para falar com Dra. Mariana durante intervalo de consultas.',
-      assignedToName: 'Carlos Eduardo',
-    },
-    promises: [],
-    scheduledReturns: [
-      {
-        id: 'sr-sl-1',
-        debtId: '10555',
-        date: '04/11/2024',
-        time: '14:00',
-        reason: 'Definição de pagamento via PIX.',
-        responsibleName: 'Carlos Eduardo',
-        status: 'Agendado',
-      },
-    ],
-    payments: [],
-    history: [
-      {
-        id: 'h-sl-1',
-        debtId: '10555',
-        timestamp: '2024-10-31T11:20:00',
-        dateFormatted: '31/10/2024',
-        timeFormatted: '11:20',
-        operatorId: 'carlos-eduardo',
-        operatorName: 'Carlos Eduardo',
-        channel: 'Ligação',
-        result: 'Solicitou retorno',
-        notes: 'Secretária informou que Dra. Mariana só atende cobrança no intervalo das 14h.',
-      },
-    ],
-  },
 ];
 
 // Reactive in-memory state
 let debtsState: Debt[] = JSON.parse(JSON.stringify(INITIAL_DEBTS));
 let debtorsState: Debtor[] = JSON.parse(JSON.stringify(INITIAL_DEBTORS));
+
+// Current Operational Work Day Simulation
+let currentOperationalDate = '04/11/2024';
+let isDayFinished = false;
+
+// Build initial Agenda Diária for today
+function createInitialAgenda(): AgendaDiariaCobranca[] {
+  // Ordered sequence of debts for Carlos Eduardo
+  return debtsState.map((d, index) => {
+    // Determine worked state: if had interaction on 04/11, it is already Trabalhada today!
+    const hadTodayContact = d.history.some((h) => h.dateFormatted.includes('04/11'));
+    return {
+      id: `ag-${d.id}`,
+      debtId: d.id,
+      debt: d,
+      date: currentOperationalDate,
+      operatorId: d.assignedTo.id,
+      operatorName: d.assignedTo.name,
+      status: hadTodayContact ? 'Trabalhada' : 'Pendente',
+      order: index + 1,
+      workedAt: hadTodayContact ? d.history[0]?.timestamp : undefined,
+      lastResult: hadTodayContact ? d.history[0]?.result : undefined,
+      isCarriedOver: index > 5, // some simulated carried over from previous day
+    };
+  });
+}
+
+let agendaState: AgendaDiariaCobranca[] = createInitialAgenda();
 
 type Listener = () => void;
 const listeners = new Set<Listener>();
@@ -1019,6 +1028,14 @@ export const debtService = {
     return () => {
       listeners.delete(listener);
     };
+  },
+
+  getCurrentDate(): string {
+    return currentOperationalDate;
+  },
+
+  isDayClosed(): boolean {
+    return isDayFinished;
   },
 
   getAllDebts(): Debt[] {
@@ -1050,14 +1067,89 @@ export const debtService = {
   },
 
   /**
-   * Registers a new contact/interaction on a debt.
-   * Crucial: uses `currentUser.name` automatically - NEVER asks the operator for their name!
+   * Retorna a agenda de trabalho diária
+   */
+  getAgendaDoDia(): AgendaDiariaCobranca[] {
+    // Keep reference updated
+    agendaState.forEach((item) => {
+      const liveDebt = debtsState.find((d) => d.id === item.debtId);
+      if (liveDebt) item.debt = liveDebt;
+    });
+    return [...agendaState];
+  },
+
+  /**
+   * Retorna a próxima cobrança pendente na fila diária de trabalho
+   */
+  getProximaCobrancaPendente(excludeDebtId?: string): Debt | undefined {
+    const pendenteItem = agendaState.find(
+      (a) => a.status === 'Pendente' && a.debtId !== excludeDebtId
+    );
+    if (!pendenteItem) return undefined;
+    return debtsState.find((d) => d.id === pendenteItem.debtId);
+  },
+
+  /**
+   * Resumo consolidado da Produção do Dia
+   */
+  getProducaoDoDia(): ResumoProducaoDia {
+    const totalPrevistas = 42; // Meta/Previstas configuradas para o dia
+    const totalTrabalhadas = agendaState.filter((a) => a.status === 'Trabalhada').length;
+    // Real count from our items + mock scale
+    const scaledTrabalhadas = Math.max(totalTrabalhadas, 18);
+    const scaledPendentes = Math.max(0, totalPrevistas - scaledTrabalhadas);
+
+    const valorCarteiraTotal = 384200.0;
+    const valorTrabalhadoTotal = (valorCarteiraTotal * scaledTrabalhadas) / totalPrevistas;
+
+    // Sum recovered and promised today
+    const valorRecuperado = debtsState.reduce((acc, d) => {
+      const todayPay = d.payments.filter((p) => p.date.includes('04/11') || p.date.includes(currentOperationalDate));
+      return acc + todayPay.reduce((pAcc, p) => pAcc + p.value, 0);
+    }, 0) || 62800.0;
+
+    const valorPrometido = debtsState.reduce((acc, d) => {
+      if (d.activePromise && d.activePromise.status === 'vigente') {
+        return acc + d.activePromise.promisedValue;
+      }
+      return acc;
+    }, 0) || 28450.0;
+
+    const qtdPromessas = debtsState.filter((d) => !!d.activePromise).length || 5;
+    const qtdRetornos = debtsState.filter((d) => !!d.nextReturn).length || 6;
+
+    return {
+      date: currentOperationalDate,
+      operatorName: 'Carlos Eduardo',
+      metaDiaria: 35,
+      previstas: totalPrevistas,
+      trabalhadas: scaledTrabalhadas,
+      pendentes: scaledPendentes,
+      percentualRealizado: Math.round((scaledTrabalhadas / totalPrevistas) * 100),
+      valorCarteira: valorCarteiraTotal,
+      valorTrabalhado: valorTrabalhadoTotal,
+      valorRecuperado,
+      valorPrometido,
+      qtdPromessas,
+      qtdRetornos,
+      isFinished: isDayFinished,
+    };
+  },
+
+  /**
+   * Registra a ação de cobrança (FAZ) e marca como TRABALHADA na Agenda Diária.
+   * Não pede nome do operador (identificação automática).
    */
   registerContact(
     debtId: string,
     payload: ContactRegistrationPayload,
     currentUser: User
-  ): { success: boolean; debt?: Debt; nextDebtId?: string } {
+  ): {
+    success: boolean;
+    debt?: Debt;
+    nextDebtId?: string;
+    isQueueFinished?: boolean;
+  } {
     const debtIndex = debtsState.findIndex((d) => d.id === debtId);
     if (debtIndex === -1) {
       return { success: false };
@@ -1065,9 +1157,7 @@ export const debtService = {
 
     const currentDebt = debtsState[debtIndex];
     const now = new Date();
-    const dateFormatted = `${String(now.getDate()).padStart(2, '0')}/${String(
-      now.getMonth() + 1
-    ).padStart(2, '0')}/${now.getFullYear()}`;
+    const dateFormatted = currentOperationalDate;
     const timeFormatted = `${String(now.getHours()).padStart(2, '0')}:${String(
       now.getMinutes()
     ).padStart(2, '0')}`;
@@ -1085,7 +1175,7 @@ export const debtService = {
       channel: payload.channel,
       result: payload.result,
       contactPerson: payload.contactPerson || undefined,
-      notes: payload.notes || 'Registro de contato efetuado.',
+      notes: payload.notes || `Contato realizado via ${payload.channel}.`,
     };
 
     // Update last contact
@@ -1102,7 +1192,7 @@ export const debtService = {
     if (payload.hasPromise && payload.promisedValue && payload.promisedDate) {
       const promisedVal =
         typeof payload.promisedValue === 'string'
-          ? parseFloat(String(payload.promisedValue).replace(',', '.'))
+          ? parseFloat(String(payload.promisedValue).replace(/\./g, '').replace(',', '.'))
           : payload.promisedValue;
 
       const newPromise: PromiseRecord = {
@@ -1140,7 +1230,7 @@ export const debtService = {
     if (payload.hasPayment || payload.result === 'Pagou') {
       const payVal = payload.receivedValue
         ? typeof payload.receivedValue === 'string'
-          ? parseFloat(String(payload.receivedValue).replace(',', '.'))
+          ? parseFloat(String(payload.receivedValue).replace(/\./g, '').replace(',', '.'))
           : payload.receivedValue
         : currentDebt.currentValue;
 
@@ -1149,8 +1239,7 @@ export const debtService = {
         debtId: currentDebt.id,
         date: payload.paymentDate || dateFormatted,
         value: payVal,
-        method: payload.channel === 'WhatsApp' ? 'PIX' : 'Transferência TED',
-        conciliationCode: `TOTVS-BAIXA-${Math.floor(10000 + Math.random() * 90000)}`,
+        method: payload.channel === 'WhatsApp' ? 'PIX' : 'TED Bancário',
         status: 'Liquidado',
       };
 
@@ -1196,7 +1285,7 @@ export const debtService = {
       };
     }
 
-    // If other status outcomes
+    // Other results
     if (payload.result === 'Não atende' || payload.result === 'Não responde') {
       if (currentDebt.status !== 'promessa_firme' && currentDebt.status !== 'pago') {
         currentDebt.status = 'sem_contato';
@@ -1213,15 +1302,105 @@ export const debtService = {
     // Add to beginning of history
     currentDebt.history.unshift(newHistoryItem);
 
-    // Find next debt for "Salvar e ir para próxima cobrança"
-    const nextDebt = debtsState[(debtIndex + 1) % debtsState.length];
+    // REGRA FUNDAMENTAL: Marcar como TRABALHADA na Agenda Diária
+    const agendaItemIndex = agendaState.findIndex((a) => a.debtId === currentDebt.id);
+    if (agendaItemIndex !== -1) {
+      agendaState[agendaItemIndex].status = 'Trabalhada';
+      agendaState[agendaItemIndex].workedAt = now.toISOString();
+      agendaState[agendaItemIndex].lastResult = payload.result;
+    } else {
+      agendaState.push({
+        id: `ag-${currentDebt.id}`,
+        debtId: currentDebt.id,
+        debt: currentDebt,
+        date: currentOperationalDate,
+        operatorId: currentUser.id,
+        operatorName: currentUser.name,
+        status: 'Trabalhada',
+        order: agendaState.length + 1,
+        workedAt: now.toISOString(),
+        lastResult: payload.result,
+      });
+    }
+
+    // Encontrar próxima cobrança pendente na agenda
+    const proximaPendente = this.getProximaCobrancaPendente(currentDebt.id);
+    const isQueueFinished = !proximaPendente;
 
     notifyListeners();
 
     return {
       success: true,
       debt: currentDebt,
-      nextDebtId: nextDebt ? nextDebt.id : undefined,
+      nextDebtId: proximaPendente ? proximaPendente.id : undefined,
+      isQueueFinished,
+    };
+  },
+
+  /**
+   * Encerra a agenda do dia (FINISH):
+   * Transfere as cobranças não trabalhadas para o próximo dia
+   */
+  finishDay(): {
+    transferredCount: number;
+    workedCount: number;
+    newDate: string;
+  } {
+    const pendentes = agendaState.filter((a) => a.status === 'Pendente');
+    const transferredCount = pendentes.length;
+    const workedCount = agendaState.filter((a) => a.status === 'Trabalhada').length;
+
+    // Mark pending ones as Transferred
+    agendaState.forEach((item) => {
+      if (item.status === 'Pendente') {
+        item.status = 'Transferida para o próximo dia';
+        item.transferredAt = new Date().toISOString();
+      }
+    });
+
+    isDayFinished = true;
+
+    // Simulate transition to next day (e.g. 05/11/2024)
+    currentOperationalDate = '05/11/2024';
+
+    // The transferred debts are now carried over to the new day's agenda!
+    const newAgenda: AgendaDiariaCobranca[] = [
+      ...pendentes.map((p, idx) => ({
+        id: `ag-next-${p.debtId}`,
+        debtId: p.debtId,
+        debt: p.debt,
+        date: currentOperationalDate,
+        operatorId: p.operatorId,
+        operatorName: p.operatorName,
+        status: 'Pendente' as const,
+        order: idx + 1,
+        isCarriedOver: true,
+      })),
+      // Add fresh debts for the new day
+      ...debtsState
+        .filter((d) => !pendentes.some((p) => p.debtId === d.id))
+        .map((d, idx) => ({
+          id: `ag-fresh-${d.id}`,
+          debtId: d.id,
+          debt: d,
+          date: currentOperationalDate,
+          operatorId: d.assignedTo.id,
+          operatorName: d.assignedTo.name,
+          status: 'Pendente' as const,
+          order: pendentes.length + idx + 1,
+          isCarriedOver: false,
+        })),
+    ];
+
+    agendaState = newAgenda;
+    isDayFinished = false; // new day starts open
+
+    notifyListeners();
+
+    return {
+      transferredCount,
+      workedCount,
+      newDate: currentOperationalDate,
     };
   },
 

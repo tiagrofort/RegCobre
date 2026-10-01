@@ -26,7 +26,6 @@ export type ContactChannel =
   | 'Áudio'
   | 'E-mail'
   | 'Serasa'
-  | 'Visita'
   | 'Outro';
 
 export type ContactResult =
@@ -53,8 +52,6 @@ export interface Debtor {
   cnpjCpf: string;
   type: 'PJ' | 'PF';
   status: 'Ativa' | 'Inativa' | 'Suspenso';
-  creditScore: number;
-  creditStatus: string;
   mainContact: {
     name: string;
     role: string;
@@ -67,6 +64,12 @@ export interface Debtor {
   totalDebt: number;
   debtsCount: number;
 }
+
+// Aliases em português conforme especificação do modelo de dados do RegCobre
+export type Usuario = User;
+export type Devedor = Debtor;
+export type Cobranca = Debt;
+export type HistoricoCobranca = DebtHistoryItem;
 
 export interface PromiseRecord {
   id: string;
@@ -94,8 +97,7 @@ export interface PaymentRecord {
   debtId: string;
   date: string;
   value: number;
-  method: string;
-  conciliationCode: string;
+  method?: string;
   status: string;
 }
 
@@ -201,4 +203,47 @@ export interface ContactRegistrationPayload {
   hasPayment: boolean;
   paymentDate?: string;
   receivedValue?: number;
+}
+
+// Agenda Diária da Operação
+export type AgendaStatus =
+  | 'Pendente'
+  | 'Em andamento'
+  | 'Trabalhada'
+  | 'Não trabalhada'
+  | 'Transferida para o próximo dia';
+
+export interface AgendaDiariaCobranca {
+  id: string;
+  debtId: string;
+  debt: Debt;
+  date: string; // YYYY-MM-DD
+  operatorId: string;
+  operatorName: string;
+  status: AgendaStatus;
+  order: number;
+  workedAt?: string; // timestamp
+  transferredAt?: string; // timestamp
+  isCarriedOver?: boolean; // se veio carregada do dia anterior
+  lastResult?: ContactResult;
+  notes?: string;
+}
+
+// Resumo da Produção do Dia
+export interface ResumoProducaoDia {
+  date: string;
+  operatorName: string;
+  metaDiaria: number;
+  previstas: number;
+  trabalhadas: number;
+  pendentes: number;
+  percentualRealizado: number;
+  valorCarteira: number;
+  valorTrabalhado: number;
+  valorRecuperado: number;
+  valorPrometido: number;
+  qtdPromessas: number;
+  qtdRetornos: number;
+  isFinished: boolean;
+  finishedAt?: string;
 }

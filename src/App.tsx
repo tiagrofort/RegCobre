@@ -3,6 +3,7 @@ import { AuthProvider, useAuth } from './context/AuthContext';
 import { Sidebar, NavScreen } from './components/Sidebar';
 import { Header } from './components/Header';
 import { FastLogDrawer } from './components/FastLogDrawer';
+import { FinishDayModal } from './components/FinishDayModal';
 import { LoginView } from './views/LoginView';
 import { DashboardCobradorView } from './views/DashboardCobradorView';
 import { MinhaCarteiraView } from './views/MinhaCarteiraView';
@@ -20,13 +21,17 @@ const MainAppContent: React.FC = () => {
   const { isAuthenticated, currentUser } = useAuth();
 
   // Navigation State
-  const [currentScreen, setCurrentScreen] = useState<NavScreen>('dashboard-do-cobrador');
+  const [currentScreen, setCurrentScreen] = useState<NavScreen>('trabalho-de-hoje');
   const [selectedDebtId, setSelectedDebtId] = useState<string>('10002');
   const [selectedDebtorId, setSelectedDebtorId] = useState<string>('d-andrade');
 
   // Fast Log Drawer Global Controller
   const [isFastLogDrawerOpen, setIsFastLogDrawerOpen] = useState(false);
   const [fastLogTargetDebt, setFastLogTargetDebt] = useState<Debt | undefined>(undefined);
+
+  // Day Finish Modal Controller (FINISH)
+  const [isFinishModalOpen, setIsFinishModalOpen] = useState(false);
+  const [finishToast, setFinishToast] = useState<{ message: string; date: string } | null>(null);
 
   // Re-render trigger when service emits changes
   const [, setTick] = useState(0);
@@ -38,7 +43,7 @@ const MainAppContent: React.FC = () => {
 
   // Sync initial screen when supervisor logs in
   useEffect(() => {
-    if (currentUser?.role === 'supervisor' && currentScreen === 'dashboard-do-cobrador') {
+    if (currentUser?.role === 'supervisor' && currentScreen === 'trabalho-de-hoje') {
       setCurrentScreen('dashboard-gerencial');
     }
   }, [currentUser]);
@@ -51,7 +56,7 @@ const MainAppContent: React.FC = () => {
           setCurrentScreen(
             currentUser?.role === 'supervisor'
               ? 'dashboard-gerencial'
-              : 'dashboard-do-cobrador'
+              : 'trabalho-de-hoje'
           );
         }}
       />
@@ -78,7 +83,17 @@ const MainAppContent: React.FC = () => {
     }
   };
 
+  const handleDayFinished = (newDate: string, transferredCount: number) => {
+    setFinishToast({
+      message: `Expediente encerrado! ${transferredCount} cobranças não trabalhadas foram transferidas para a agenda de ${newDate}.`,
+      date: newDate,
+    });
+    setTimeout(() => setFinishToast(null), 5000);
+    setCurrentScreen('trabalho-de-hoje');
+  };
+
   const debts = debtService.getAllDebts();
+  const producao = debtService.getProducaoDoDia();
   const currentFichaDebt = debts.find((d) => d.id === selectedDebtId) || debts[0];
 
   return (
@@ -92,6 +107,7 @@ const MainAppContent: React.FC = () => {
         }}
         portfolioCount={debts.length}
         returnsCount={debts.filter((d) => !!d.nextReturn).length}
+        unworkedTodayCount={producao.pendentes}
       />
 
       {/* Main Viewport */}
@@ -109,11 +125,12 @@ const MainAppContent: React.FC = () => {
 
         {/* Dynamic Screen Container */}
         <main className="relative pt-16 w-full min-h-screen bg-surface">
-          {currentScreen === 'dashboard-do-cobrador' && (
+          {currentScreen === 'trabalho-de-hoje' && (
             <DashboardCobradorView
               onSelectDebt={handleSelectDebtAndOpenFicha}
               onOpenFastLog={handleOpenFastLogForDebt}
               onNavigateToPortfolio={() => setCurrentScreen('minha-carteira')}
+              onOpenFinishModal={() => setIsFinishModalOpen(true)}
             />
           )}
 
@@ -128,15 +145,17 @@ const MainAppContent: React.FC = () => {
             <FichaCobrancaView
               debtId={selectedDebtId}
               onBackToPortfolio={() => setCurrentScreen('minha-carteira')}
-              onOpenFastLog={handleOpenFastLogForDebt}
-              onNavigateToDebtor={(debtorId) => {
-                setSelectedDebtorId(debtorId);
-                setCurrentScreen('base-de-devedores');
-              }}
-              onSelectAnotherDebt={(newDebtId) => {
+              onBackToTodayWork={() => setCurrentScreen('trabalho-de-hoje')}
+              onSelectAnotherDebt={(newDebtId: string) => {
                 setSelectedDebtId(newDebtId);
                 window.scrollTo({ top: 0, behavior: 'smooth' });
               }}
+              onOpenFinishModal={() => setIsFinishModalOpen(true)}
+              onNavigateToDebtor={(debtorId: string) => {
+                setSelectedDebtorId(debtorId);
+                setCurrentScreen('base-de-devedores');
+              }}
+              onOpenFastLog={handleOpenFastLogForDebt}
             />
           )}
 
@@ -147,7 +166,12 @@ const MainAppContent: React.FC = () => {
             />
           )}
 
-          {currentScreen === 'relatorio-diario' && <RelatorioDiarioView />}
+          {currentScreen === 'producao-do-dia' && (
+            <RelatorioDiarioView
+              onOpenFinishModal={() => setIsFinishModalOpen(true)}
+              onSelectDebt={handleSelectDebtAndOpenFicha}
+            />
+          )}
 
           {currentScreen === 'base-de-devedores' && (
             <BaseDevedoresView
@@ -167,7 +191,12 @@ const MainAppContent: React.FC = () => {
             />
           )}
 
-          {currentScreen === 'importar-erp' && <ImportarErpView />}
+          {currentScreen === 'importar-erp' && (
+            <ImportarErpView
+              onNavigateToTodayWork={() => setCurrentScreen('trabalho-de-hoje')}
+              onNavigateToPortfolio={() => setCurrentScreen('minha-carteira')}
+            />
+          )}
         </main>
       </div>
 
@@ -178,6 +207,28 @@ const MainAppContent: React.FC = () => {
         onClose={() => setIsFastLogDrawerOpen(false)}
         onSaved={handleFastLogSaved}
       />
+
+      {/* Modal de Encerramento do Dia (FINISH) */}
+      <FinishDayModal
+        isOpen={isFinishModalOpen}
+        onClose={() => setIsFinishModalOpen(false)}
+        onFinished={handleDayFinished}
+      />
+
+      {/* Floating notification for day closure */}
+      {finishToast && (
+        <div className="fixed bottom-6 right-6 bg-primary text-surface px-5 py-3 rounded-xl shadow-2xl flex items-center gap-3 z-50 animate-bounce text-sm font-medium border border-secondary">
+          <span className="material-symbols-outlined text-secondary-fixed text-[24px]">
+            verified
+          </span>
+          <div>
+            <strong className="block text-secondary-fixed font-bold text-xs uppercase font-label-uppercase">
+              Agenda do Dia Atualizada
+            </strong>
+            <span>{finishToast.message}</span>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

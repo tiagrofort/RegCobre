@@ -199,14 +199,14 @@ export const BaseDevedoresView: React.FC<BaseDevedoresViewProps> = ({
 
                 <div>
                   <span className="text-outline block font-label-uppercase text-[10px]">
-                    SCORE SERASA & SITUAÇÃO
+                    STATUS CADASTRAL
                   </span>
                   <div className="flex items-center gap-2">
-                    <span className="font-data-mono font-bold text-primary">
-                      {selectedDebtor.creditScore} / 1000
+                    <span className="px-2 py-0.5 rounded bg-secondary-container text-on-secondary-container font-semibold text-xs">
+                      {selectedDebtor.status}
                     </span>
-                    <span className="px-1.5 py-0.5 rounded bg-error-container text-on-error-container font-semibold text-[10px]">
-                      {selectedDebtor.creditStatus}
+                    <span className="text-[11px] text-outline font-data-mono">
+                      {selectedDebtor.debtsCount} títulos cadastrados
                     </span>
                   </div>
                 </div>
