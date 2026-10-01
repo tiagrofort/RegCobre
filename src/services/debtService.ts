@@ -1093,39 +1093,41 @@ export const debtService = {
    * Resumo consolidado da Produção do Dia
    */
   getProducaoDoDia(): ResumoProducaoDia {
-    const totalPrevistas = 42; // Meta/Previstas configuradas para o dia
-    const totalTrabalhadas = agendaState.filter((a) => a.status === 'Trabalhada').length;
-    // Real count from our items + mock scale
-    const scaledTrabalhadas = Math.max(totalTrabalhadas, 18);
-    const scaledPendentes = Math.max(0, totalPrevistas - scaledTrabalhadas);
+    const totalPrevistas = 42;
+    // Count how many contacts were dynamically registered in this session
+    const newlyWorkedCount = agendaState.filter((a) => a.status === 'Trabalhada' && a.workedAt).length;
+    // Carlos starts with 18 trabalhadas and 24 pendentes as per prompt specification
+    const totalTrabalhadas = Math.min(totalPrevistas, 18 + newlyWorkedCount);
+    const pendentes = Math.max(0, totalPrevistas - totalTrabalhadas);
 
     const valorCarteiraTotal = 384200.0;
-    const valorTrabalhadoTotal = (valorCarteiraTotal * scaledTrabalhadas) / totalPrevistas;
+    const valorTrabalhadoTotal = (valorCarteiraTotal * totalTrabalhadas) / totalPrevistas;
 
-    // Sum recovered and promised today
-    const valorRecuperado = debtsState.reduce((acc, d) => {
-      const todayPay = d.payments.filter((p) => p.date.includes('04/11') || p.date.includes(currentOperationalDate));
+    // Sum base R$ 3.200,00 + newly confirmed payments
+    const newPaymentsTotal = debtsState.reduce((acc, d) => {
+      const todayPay = d.payments.filter((p) => p.id.startsWith('pay-'));
       return acc + todayPay.reduce((pAcc, p) => pAcc + p.value, 0);
-    }, 0) || 62800.0;
+    }, 0);
+    const valorRecuperado = 3200.0 + newPaymentsTotal;
 
-    const valorPrometido = debtsState.reduce((acc, d) => {
-      if (d.activePromise && d.activePromise.status === 'vigente') {
-        return acc + d.activePromise.promisedValue;
-      }
-      return acc;
-    }, 0) || 28450.0;
+    // Sum base R$ 5.400,00 + newly registered promises
+    const newPromisesTotal = debtsState.reduce((acc, d) => {
+      const todayProm = d.promises.filter((p) => p.id.startsWith('p-'));
+      return acc + todayProm.reduce((pAcc, p) => pAcc + p.promisedValue, 0);
+    }, 0);
+    const valorPrometido = 5400.0 + newPromisesTotal;
 
-    const qtdPromessas = debtsState.filter((d) => !!d.activePromise).length || 5;
-    const qtdRetornos = debtsState.filter((d) => !!d.nextReturn).length || 6;
+    const qtdPromessas = 6 + debtsState.reduce((acc, d) => acc + d.promises.filter((p) => p.id.startsWith('p-')).length, 0);
+    const qtdRetornos = 6 + debtsState.reduce((acc, d) => acc + d.scheduledReturns.filter((r) => r.id.startsWith('sr-')).length, 0);
 
     return {
       date: currentOperationalDate,
       operatorName: 'Carlos Eduardo',
-      metaDiaria: 35,
+      metaDiaria: 30,
       previstas: totalPrevistas,
-      trabalhadas: scaledTrabalhadas,
-      pendentes: scaledPendentes,
-      percentualRealizado: Math.round((scaledTrabalhadas / totalPrevistas) * 100),
+      trabalhadas: totalTrabalhadas,
+      pendentes: pendentes,
+      percentualRealizado: Math.round((totalTrabalhadas / totalPrevistas) * 100),
       valorCarteira: valorCarteiraTotal,
       valorTrabalhado: valorTrabalhadoTotal,
       valorRecuperado,
@@ -1346,9 +1348,11 @@ export const debtService = {
     workedCount: number;
     newDate: string;
   } {
+    const producao = this.getProducaoDoDia();
+    const transferredCount = producao.pendentes;
+    const workedCount = producao.trabalhadas;
+
     const pendentes = agendaState.filter((a) => a.status === 'Pendente');
-    const transferredCount = pendentes.length;
-    const workedCount = agendaState.filter((a) => a.status === 'Trabalhada').length;
 
     // Mark pending ones as Transferred
     agendaState.forEach((item) => {

@@ -206,6 +206,7 @@ const MainAppContent: React.FC = () => {
         debt={fastLogTargetDebt || currentFichaDebt}
         onClose={() => setIsFastLogDrawerOpen(false)}
         onSaved={handleFastLogSaved}
+        onOpenFicha={handleSelectDebtAndOpenFicha}
       />
 
       {/* Modal de Encerramento do Dia (FINISH) */}

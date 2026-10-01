@@ -8,6 +8,7 @@ interface FastLogDrawerProps {
   debt?: Debt;
   onClose: () => void;
   onSaved?: (updatedDebt: Debt, nextDebtId?: string, goToNext?: boolean) => void;
+  onOpenFicha?: (debtId: string) => void;
 }
 
 export const FastLogDrawer: React.FC<FastLogDrawerProps> = ({
@@ -15,6 +16,7 @@ export const FastLogDrawer: React.FC<FastLogDrawerProps> = ({
   debt,
   onClose,
   onSaved,
+  onOpenFicha,
 }) => {
   const { currentUser } = useAuth();
 
@@ -179,10 +181,25 @@ export const FastLogDrawer: React.FC<FastLogDrawerProps> = ({
 
           {/* Section: Canal de Contato */}
           <div>
-            <label className="block font-label-uppercase text-label-uppercase text-on-surface-variant uppercase tracking-wider mb-space-xs">
-              Canal Utilizado
-            </label>
-            <div className="grid grid-cols-4 gap-1.5">
+            <div className="flex items-center justify-between mb-space-xs">
+              <label className="block font-label-uppercase text-label-uppercase text-on-surface-variant uppercase tracking-wider">
+                Canal Utilizado
+              </label>
+              {onOpenFicha && debt && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    onClose();
+                    onOpenFicha(debt.id);
+                  }}
+                  className="text-xs text-secondary hover:underline font-semibold flex items-center gap-1 cursor-pointer"
+                >
+                  <span>Abrir Ficha da Cobrança</span>
+                  <span className="material-symbols-outlined text-[14px]">open_in_new</span>
+                </button>
+              )}
+            </div>
+            <div className="grid grid-cols-4 sm:grid-cols-7 gap-1.5">
               {[
                 { label: 'Ligação', icon: 'call' },
                 { label: 'WhatsApp', icon: 'chat' },
@@ -190,7 +207,6 @@ export const FastLogDrawer: React.FC<FastLogDrawerProps> = ({
                 { label: 'Áudio', icon: 'mic' },
                 { label: 'E-mail', icon: 'mail' },
                 { label: 'Serasa', icon: 'verified_user' },
-                { label: 'Visita', icon: 'business' },
                 { label: 'Outro', icon: 'more_horiz' },
               ].map((c) => (
                 <button
@@ -247,8 +263,7 @@ export const FastLogDrawer: React.FC<FastLogDrawerProps> = ({
                 <option value="Ligação realizada">Ligação realizada</option>
                 <option value="Contestação">Contestação / Disputa Comercial</option>
                 <option value="Enviado para Serasa">Enviado para Serasa</option>
-                <option value="Promessa Não Cumprida">Promessa Não Cumprida / Quebrada</option>
-                <option value="Outro">Outro desfecho</option>
+                <option value="Outro">Outro</option>
               </select>
               <span className="material-symbols-outlined absolute right-2.5 top-2 text-on-surface-variant text-[18px] pointer-events-none">
                 expand_more
