@@ -5,17 +5,19 @@ interface HeaderProps {
   onSearch?: (query: string) => void;
   onOpenQuickContact?: () => void;
   onNavigate?: (screen: string) => void;
+  isSidebarCollapsed?: boolean;
 }
 
 export const Header: React.FC<HeaderProps> = ({
   onSearch,
   onOpenQuickContact,
   onNavigate,
+  isSidebarCollapsed = false,
 }) => {
   const { currentUser, logout, switchProfile } = useAuth();
 
   return (
-    <header className="fixed top-0 left-64 right-0 h-16 bg-surface-container-lowest/90 backdrop-blur-xl z-40 shadow-[0_1px_8px_rgba(0,0,0,0.04)] px-space-lg flex items-center justify-between gap-space-lg border-b border-outline-variant/30">
+    <header className={`fixed top-0 ${isSidebarCollapsed ? 'left-20' : 'left-64'} right-0 h-16 bg-surface-container-lowest/90 backdrop-blur-xl z-40 shadow-[0_1px_8px_rgba(0,0,0,0.04)] px-space-lg flex items-center justify-between gap-space-lg border-b border-outline-variant/30 transition-[left] duration-300 ease-in-out`}>
       {/* Search Input */}
       <div className="flex-1 max-w-md">
         <div className="relative flex items-center w-full">

@@ -17,6 +17,8 @@ import { ImportarErpView } from './views/ImportarErpView';
 import { debtService } from './services/debtService';
 import { Debt } from './types';
 
+const SIDEBAR_COLLAPSED_STORAGE_KEY = 'regcobre.sidebar.collapsed';
+
 const MainAppContent: React.FC = () => {
   const { isAuthenticated, currentUser } = useAuth();
 
@@ -24,6 +26,43 @@ const MainAppContent: React.FC = () => {
   const [currentScreen, setCurrentScreen] = useState<NavScreen>('trabalho-de-hoje');
   const [selectedDebtId, setSelectedDebtId] = useState<string>('10002');
   const [selectedDebtorId, setSelectedDebtorId] = useState<string>('d-andrade');
+
+  // Retractable Sidebar State with LocalStorage persistence
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState<boolean>(() => {
+    try {
+      const saved = localStorage.getItem(SIDEBAR_COLLAPSED_STORAGE_KEY);
+      if (saved !== null) {
+        return saved === 'true';
+      }
+      return typeof window !== 'undefined' && window.innerWidth < 1280;
+    } catch {
+      return false;
+    }
+  });
+
+  const handleToggleSidebar = () => {
+    setIsSidebarCollapsed((prev) => {
+      const next = !prev;
+      try {
+        localStorage.setItem(SIDEBAR_COLLAPSED_STORAGE_KEY, String(next));
+      } catch {
+        // Ignore storage exceptions
+      }
+      return next;
+    });
+  };
+
+  // Keyboard shortcut: Ctrl+B or Cmd+B to toggle sidebar
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'b') {
+        e.preventDefault();
+        handleToggleSidebar();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
 
   // Fast Log Drawer Global Controller
   const [isFastLogDrawerOpen, setIsFastLogDrawerOpen] = useState(false);
@@ -108,12 +147,19 @@ const MainAppContent: React.FC = () => {
         portfolioCount={debts.length}
         returnsCount={debts.filter((d) => !!d.nextReturn).length}
         unworkedTodayCount={producao.pendentes}
+        isCollapsed={isSidebarCollapsed}
+        onToggleCollapse={handleToggleSidebar}
       />
 
       {/* Main Viewport */}
-      <div className="pl-64 flex-1 flex flex-col min-w-0">
+      <div
+        className={`${
+          isSidebarCollapsed ? 'pl-20' : 'pl-64'
+        } flex-1 flex flex-col min-w-0 transition-[padding-left] duration-300 ease-in-out`}
+      >
         {/* Top Header */}
         <Header
+          isSidebarCollapsed={isSidebarCollapsed}
           onOpenQuickContact={() => handleOpenFastLogForDebt()}
           onNavigate={(screen) => setCurrentScreen(screen as NavScreen)}
           onSearch={(query) => {
