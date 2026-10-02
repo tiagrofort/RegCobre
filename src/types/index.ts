@@ -58,14 +58,17 @@ export interface DebtorPhone {
 export type PaymentDataType = 'PIX' | 'Outro';
 export type PixKeyType = 'CPF' | 'CNPJ' | 'E-mail' | 'Telefone' | 'Aleatória' | 'Outro';
 
-export interface DebtorPaymentData {
+export interface CompanyPaymentData {
   id: string;
   type: PaymentDataType;
   description: string;
   pixKeyType?: PixKeyType;
   pixKey?: string;
-  paymentInfo: string;
+  paymentInfo?: string;
+  bankName?: string;
+  accountDescription?: string;
   active: boolean;
+  isPrimary: boolean;
 }
 
 export interface Debtor {
@@ -87,7 +90,6 @@ export interface Debtor {
     hasWhatsApp?: boolean;
   };
   phones: DebtorPhone[]; // Coleção oficial de telefones do devedor
-  paymentData: DebtorPaymentData[]; // Coleção oficial de dados de pagamento/PIX do devedor
   totalDebt: number;
   debtsCount: number;
 }

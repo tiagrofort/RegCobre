@@ -11,7 +11,8 @@ export type NavScreen =
   | 'base-de-devedores'
   | 'conferencia-de-cobrancas'
   | 'dashboard-gerencial'
-  | 'importar-erp';
+  | 'importar-erp'
+  | 'dados-recebimento-empresa';
 
 interface SidebarProps {
   currentScreen: NavScreen;
@@ -496,6 +497,53 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 <>
                   <span className="material-symbols-outlined text-[18px]">cloud_upload</span>
                   <span>Importar ERP</span>
+                </>
+              )}
+            </button>
+          </nav>
+        </div>
+
+        {/* Section: CONFIGURAÇÕES */}
+        <div className={isCollapsed ? 'px-2 py-space-xs border-t border-primary/40' : 'px-space-md py-space-xs border-t border-primary/40'}>
+          {!isCollapsed ? (
+            <div className="px-space-sm py-space-xs font-label-uppercase text-label-uppercase text-on-primary-container uppercase tracking-wider">
+              Configurações
+            </div>
+          ) : (
+            <div className="w-8 h-px bg-primary/40 mx-auto my-1" />
+          )}
+
+          <nav className="flex flex-col gap-space-2xs mt-space-2xs">
+            {/* Dados de Recebimento */}
+            <button
+              onClick={() => onNavigate('dados-recebimento-empresa')}
+              aria-label="Dados de Recebimento da Empresa"
+              title={isCollapsed ? 'Dados de Recebimento da Empresa' : undefined}
+              className={`rounded-lg transition-colors cursor-pointer group relative ${
+                isCollapsed
+                  ? `w-12 h-11 mx-auto flex items-center justify-center ${
+                      currentScreen === 'dados-recebimento-empresa'
+                        ? 'bg-primary text-surface font-semibold shadow-xs'
+                        : 'text-on-primary-container hover:bg-primary hover:text-surface'
+                    }`
+                  : `flex items-center gap-space-sm px-space-sm py-space-xs font-body-md text-body-md text-left w-full ${
+                      currentScreen === 'dados-recebimento-empresa'
+                        ? 'bg-primary text-surface font-semibold shadow-xs'
+                        : 'text-on-primary-container hover:bg-primary hover:text-surface'
+                    }`
+              }`}
+            >
+              {isCollapsed ? (
+                <>
+                  <span className="material-symbols-outlined text-[20px]">account_balance</span>
+                  <div className="absolute left-full ml-3 px-3 py-1.5 bg-primary text-surface text-xs font-medium rounded-lg shadow-xl opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity whitespace-nowrap z-50 border border-primary/40">
+                    <span>Dados de Recebimento</span>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <span className="material-symbols-outlined text-[18px]">account_balance</span>
+                  <span>Dados de Recebimento</span>
                 </>
               )}
             </button>

@@ -2,7 +2,7 @@ import {
   Debt,
   Debtor,
   DebtorPhone,
-  DebtorPaymentData,
+  CompanyPaymentData,
   DebtHistoryItem,
   ContactRegistrationPayload,
   User,
@@ -13,7 +13,7 @@ import {
   ResumoProducaoDia,
 } from '../types';
 
-// Initial Mock Debtors (focused strictly on collection with phones and payment data)
+// Initial Mock Debtors (focused strictly on collection with phones)
 const INITIAL_DEBTORS: Debtor[] = [
   {
     id: 'd-andrade',
@@ -66,35 +66,6 @@ const INITIAL_DEBTORS: Debtor[] = [
         active: false,
       },
     ],
-    paymentData: [
-      {
-        id: 'pay-andrade-1',
-        type: 'PIX',
-        description: 'PIX Financeiro Principal',
-        pixKeyType: 'CNPJ',
-        pixKey: '14.892.301/0001-44',
-        paymentInfo: '14.892.301/0001-44',
-        active: true,
-      },
-      {
-        id: 'pay-andrade-2',
-        type: 'PIX',
-        description: 'PIX Contas a Receber / Acordos',
-        pixKeyType: 'E-mail',
-        pixKey: 'financeiro@metalurgicaandrade.com.br',
-        paymentInfo: 'financeiro@metalurgicaandrade.com.br',
-        active: true,
-      },
-      {
-        id: 'pay-andrade-3',
-        type: 'PIX',
-        description: 'Chave Transitória Antiga',
-        pixKeyType: 'Aleatória',
-        pixKey: 'a1b2c3d4-e5f6-7890-abcd-ef1234567890',
-        paymentInfo: 'a1b2c3d4-e5f6-7890-abcd-ef1234567890',
-        active: false,
-      },
-    ],
     totalDebt: 26850.0,
     debtsCount: 3,
   },
@@ -141,17 +112,6 @@ const INITIAL_DEBTORS: Debtor[] = [
         active: false,
       },
     ],
-    paymentData: [
-      {
-        id: 'pay-rocha-1',
-        type: 'PIX',
-        description: 'PIX Acordos Comerciais',
-        pixKeyType: 'E-mail',
-        pixKey: 'financeiro@rochaforte.com.br',
-        paymentInfo: 'financeiro@rochaforte.com.br',
-        active: true,
-      },
-    ],
     totalDebt: 15750.0,
     debtsCount: 1,
   },
@@ -190,7 +150,6 @@ const INITIAL_DEBTORS: Debtor[] = [
         active: true,
       },
     ],
-    paymentData: [], // Demonstra devedor SEM dados de pagamento cadastrados
     totalDebt: 25590.0,
     debtsCount: 2,
   },
@@ -229,26 +188,6 @@ const INITIAL_DEBTORS: Debtor[] = [
         active: true,
       },
     ],
-    paymentData: [
-      {
-        id: 'pay-norte-1',
-        type: 'PIX',
-        description: 'PIX Celular Financeiro',
-        pixKeyType: 'Telefone',
-        pixKey: '(91) 98111-2299',
-        paymentInfo: '(91) 98111-2299',
-        active: true,
-      },
-      {
-        id: 'pay-norte-2',
-        type: 'PIX',
-        description: 'PIX CNPJ Antigo (Bloqueado)',
-        pixKeyType: 'CNPJ',
-        pixKey: '19.330.122/0003-88',
-        paymentInfo: '19.330.122/0003-88',
-        active: false,
-      },
-    ],
     totalDebt: 43290.0,
     debtsCount: 1,
   },
@@ -284,17 +223,6 @@ const INITIAL_DEBTORS: Debtor[] = [
         type: 'Financeiro',
         description: 'Renata Lemos (Supervisão)',
         hasWhatsApp: false,
-        active: true,
-      },
-    ],
-    paymentData: [
-      {
-        id: 'pay-vale-1',
-        type: 'PIX',
-        description: 'PIX Tesouraria Contagem',
-        pixKeyType: 'E-mail',
-        pixKey: 'financeiro@valeverdelog.com.br',
-        paymentInfo: 'financeiro@valeverdelog.com.br',
         active: true,
       },
     ],
@@ -344,17 +272,6 @@ const INITIAL_DEBTORS: Debtor[] = [
         active: false,
       },
     ],
-    paymentData: [
-      {
-        id: 'pay-sampaio-1',
-        type: 'PIX',
-        description: 'PIX Pessoal Roberto',
-        pixKeyType: 'CPF',
-        pixKey: '382.910.428-11',
-        paymentInfo: '382.910.428-11',
-        active: true,
-      },
-    ],
     totalDebt: 3345.0,
     debtsCount: 1,
   },
@@ -390,17 +307,6 @@ const INITIAL_DEBTORS: Debtor[] = [
         type: 'Comercial',
         description: 'Central de Vendas de Peças',
         hasWhatsApp: false,
-        active: true,
-      },
-    ],
-    paymentData: [
-      {
-        id: 'pay-central-1',
-        type: 'PIX',
-        description: 'PIX Matriz Curitiba',
-        pixKeyType: 'CNPJ',
-        pixKey: '05.811.234/0001-22',
-        paymentInfo: '05.811.234/0001-22',
         active: true,
       },
     ],
@@ -442,17 +348,6 @@ const INITIAL_DEBTORS: Debtor[] = [
         active: true,
       },
     ],
-    paymentData: [
-      {
-        id: 'pay-translog-1',
-        type: 'PIX',
-        description: 'PIX Corporativo Jundiaí',
-        pixKeyType: 'CNPJ',
-        pixKey: '14.281.992/0001-44',
-        paymentInfo: '14.281.992/0001-44',
-        active: true,
-      },
-    ],
     totalDebt: 18450.0,
     debtsCount: 1,
   },
@@ -488,17 +383,6 @@ const INITIAL_DEBTORS: Debtor[] = [
         type: 'Fixo',
         description: 'Recepção e Agendamento',
         hasWhatsApp: false,
-        active: true,
-      },
-    ],
-    paymentData: [
-      {
-        id: 'pay-lucas-1',
-        type: 'PIX',
-        description: 'PIX Clínica São Lucas',
-        pixKeyType: 'CNPJ',
-        pixKey: '19.821.442/0001-05',
-        paymentInfo: '19.821.442/0001-05',
         active: true,
       },
     ],
@@ -1295,9 +1179,62 @@ const INITIAL_DEBTS: Debt[] = [
   },
 ];
 
+// Initial Company Payment Data (Dados de Recebimento da Empresa)
+const INITIAL_COMPANY_PAYMENT_DATA: CompanyPaymentData[] = [
+  {
+    id: 'pay-emp-1',
+    type: 'PIX',
+    description: 'PIX CNPJ — Conta Principal Corporativa',
+    pixKeyType: 'CNPJ',
+    pixKey: '03.456.789/0001-90',
+    paymentInfo: '03.456.789/0001-90',
+    bankName: 'Banco Itaú Unibanco (341)',
+    accountDescription: 'Agência 0450 • C/C 18234-9 • Titular: RegCobre Cobranças',
+    active: true,
+    isPrimary: true,
+  },
+  {
+    id: 'pay-emp-2',
+    type: 'PIX',
+    description: 'PIX E-mail — Acordos e Recuperação de Crédito',
+    pixKeyType: 'E-mail',
+    pixKey: 'financeiro.recebimento@regcobre.com.br',
+    paymentInfo: 'financeiro.recebimento@regcobre.com.br',
+    bankName: 'Banco Santander (033)',
+    accountDescription: 'Agência 1209 • C/C 98124-0 • Titular: RegCobre Cobranças',
+    active: true,
+    isPrimary: false,
+  },
+  {
+    id: 'pay-emp-3',
+    type: 'PIX',
+    description: 'PIX Aleatória — Chave de Cobrança Expressa',
+    pixKeyType: 'Aleatória',
+    pixKey: 'e7b93108-9842-4f1b-a567-9d7a5b3f2081',
+    paymentInfo: 'e7b93108-9842-4f1b-a567-9d7a5b3f2081',
+    bankName: 'Banco do Brasil (001)',
+    accountDescription: 'Agência 3410 • C/C 45012-3 • Titular: RegCobre Cobranças',
+    active: true,
+    isPrimary: false,
+  },
+  {
+    id: 'pay-emp-4',
+    type: 'PIX',
+    description: 'PIX Telefone — Central de Plantão e Quitações',
+    pixKeyType: 'Telefone',
+    pixKey: '(11) 98765-4321',
+    paymentInfo: '(11) 98765-4321',
+    bankName: 'Banco Bradesco (237)',
+    accountDescription: 'Agência 2210 • C/C 78912-1 • Titular: RegCobre Cobranças',
+    active: true,
+    isPrimary: false,
+  },
+];
+
 // Reactive in-memory state
 let debtsState: Debt[] = JSON.parse(JSON.stringify(INITIAL_DEBTS));
 let debtorsState: Debtor[] = JSON.parse(JSON.stringify(INITIAL_DEBTORS));
+let companyPaymentDataState: CompanyPaymentData[] = JSON.parse(JSON.stringify(INITIAL_COMPANY_PAYMENT_DATA));
 
 // Current Operational Work Day Simulation
 let currentOperationalDate = '04/11/2024';
@@ -1421,43 +1358,110 @@ export const debtService = {
   },
 
   /**
-   * Adiciona um novo dado de pagamento/PIX ao devedor
+   * Retorna todos os dados de recebimento da empresa
    */
-  addDebtorPaymentData(debtorId: string, paymentData: Omit<DebtorPaymentData, 'id'>): DebtorPaymentData | null {
-    const debtor = debtorsState.find((d) => d.id === debtorId);
-    if (!debtor) return null;
-    const newPayment: DebtorPaymentData = {
-      ...paymentData,
-      id: `pay-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
-    };
-    if (!debtor.paymentData) debtor.paymentData = [];
-    debtor.paymentData.push(newPayment);
-    notifyListeners();
-    return newPayment;
+  getCompanyPaymentData(): CompanyPaymentData[] {
+    return [...companyPaymentDataState];
   },
 
   /**
-   * Atualiza dados de pagamento/PIX do devedor
+   * Retorna os dados de recebimento ativos da empresa
    */
-  updateDebtorPaymentData(debtorId: string, paymentId: string, updates: Partial<DebtorPaymentData>): boolean {
-    const debtor = debtorsState.find((d) => d.id === debtorId);
-    if (!debtor || !debtor.paymentData) return false;
-    const payment = debtor.paymentData.find((p) => p.id === paymentId);
-    if (!payment) return false;
-    Object.assign(payment, updates);
+  getActiveCompanyPaymentData(): CompanyPaymentData[] {
+    return companyPaymentDataState.filter((p) => p.active);
+  },
+
+  /**
+   * Retorna o dado de recebimento principal da empresa
+   */
+  getPrimaryCompanyPaymentData(): CompanyPaymentData | undefined {
+    return (
+      companyPaymentDataState.find((p) => p.isPrimary && p.active) ||
+      companyPaymentDataState.find((p) => p.isPrimary) ||
+      companyPaymentDataState[0]
+    );
+  },
+
+  /**
+   * Adiciona um novo dado de recebimento para a empresa.
+   * Regra: No máximo um dado principal (isPrimary = true).
+   */
+  addCompanyPaymentData(data: Omit<CompanyPaymentData, 'id'>): CompanyPaymentData {
+    if (data.isPrimary) {
+      companyPaymentDataState.forEach((item) => {
+        item.isPrimary = false;
+      });
+    } else if (companyPaymentDataState.length === 0) {
+      data = { ...data, isPrimary: true };
+    }
+    const newRecord: CompanyPaymentData = {
+      ...data,
+      id: `pay-emp-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
+    };
+    companyPaymentDataState.push(newRecord);
+    notifyListeners();
+    return newRecord;
+  },
+
+  /**
+   * Atualiza um dado de recebimento da empresa.
+   * Regra: Se marcado como principal, desmarca os demais.
+   */
+  updateCompanyPaymentData(id: string, updates: Partial<CompanyPaymentData>): boolean {
+    const item = companyPaymentDataState.find((p) => p.id === id);
+    if (!item) return false;
+    if (updates.isPrimary) {
+      companyPaymentDataState.forEach((p) => {
+        if (p.id !== id) {
+          p.isPrimary = false;
+        }
+      });
+    }
+    Object.assign(item, updates);
     notifyListeners();
     return true;
   },
 
   /**
-   * Alterna status ativo/inativo do dado de pagamento (sem exclusão física)
+   * Define um dado de recebimento como principal.
+   * Regra do dado principal:
+   * - o anterior deixa de ser principal;
+   * - o novo passa a ser principal;
+   * - garante que o novo dado principal esteja ativo.
    */
-  toggleDebtorPaymentDataStatus(debtorId: string, paymentId: string): boolean {
-    const debtor = debtorsState.find((d) => d.id === debtorId);
-    if (!debtor || !debtor.paymentData) return false;
-    const payment = debtor.paymentData.find((p) => p.id === paymentId);
-    if (!payment) return false;
-    payment.active = !payment.active;
+  setPrimaryCompanyPaymentData(id: string): boolean {
+    const target = companyPaymentDataState.find((p) => p.id === id);
+    if (!target) return false;
+    companyPaymentDataState.forEach((p) => {
+      p.isPrimary = p.id === id;
+    });
+    target.active = true;
+    notifyListeners();
+    return true;
+  },
+
+  /**
+   * Alterna o status ativo/inativo do dado de recebimento da empresa.
+   */
+  toggleCompanyPaymentDataStatus(id: string): boolean {
+    const item = companyPaymentDataState.find((p) => p.id === id);
+    if (!item) return false;
+    item.active = !item.active;
+    notifyListeners();
+    return true;
+  },
+
+  /**
+   * Remove um dado de recebimento da empresa.
+   */
+  deleteCompanyPaymentData(id: string): boolean {
+    const index = companyPaymentDataState.findIndex((p) => p.id === id);
+    if (index === -1) return false;
+    const wasPrimary = companyPaymentDataState[index].isPrimary;
+    companyPaymentDataState.splice(index, 1);
+    if (wasPrimary && companyPaymentDataState.length > 0) {
+      companyPaymentDataState[0].isPrimary = true;
+    }
     notifyListeners();
     return true;
   },

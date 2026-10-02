@@ -4,10 +4,7 @@ import {
   Debtor,
   Debt,
   DebtorPhone,
-  DebtorPaymentData,
   DebtorPhoneType,
-  PaymentDataType,
-  PixKeyType,
 } from '../types';
 
 interface BaseDevedoresViewProps {
@@ -47,15 +44,6 @@ export const BaseDevedoresView: React.FC<BaseDevedoresViewProps> = ({
   const [phoneDescription, setPhoneDescription] = useState('');
   const [phoneHasWhatsApp, setPhoneHasWhatsApp] = useState(true);
   const [phoneActive, setPhoneActive] = useState(true);
-
-  // --- Payment Data Modal / Form State ---
-  const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
-  const [editingPaymentId, setEditingPaymentId] = useState<string | null>(null);
-  const [paymentType, setPaymentType] = useState<PaymentDataType>('PIX');
-  const [paymentDescription, setPaymentDescription] = useState('');
-  const [pixKeyType, setPixKeyType] = useState<PixKeyType>('CNPJ');
-  const [paymentInfo, setPaymentInfo] = useState('');
-  const [paymentActive, setPaymentActive] = useState(true);
 
   const filteredDebtors = debtors.filter((d) => {
     if (!searchQuery.trim()) return true;
@@ -142,72 +130,6 @@ export const BaseDevedoresView: React.FC<BaseDevedoresViewProps> = ({
     );
   };
 
-  // Open modal to add payment data
-  const handleOpenAddPayment = () => {
-    setEditingPaymentId(null);
-    setPaymentType('PIX');
-    setPaymentDescription('');
-    setPixKeyType('CNPJ');
-    setPaymentInfo('');
-    setPaymentActive(true);
-    setIsPaymentModalOpen(true);
-  };
-
-  // Open modal to edit payment data
-  const handleOpenEditPayment = (payment: DebtorPaymentData) => {
-    setEditingPaymentId(payment.id);
-    setPaymentType(payment.type);
-    setPaymentDescription(payment.description);
-    setPixKeyType(payment.pixKeyType || 'CNPJ');
-    setPaymentInfo(payment.paymentInfo || payment.pixKey || '');
-    setPaymentActive(payment.active);
-    setIsPaymentModalOpen(true);
-  };
-
-  // Save payment data
-  const handleSavePayment = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!selectedDebtor) return;
-    if (!paymentInfo.trim()) {
-      showToast('Por favor, informe a chave PIX ou dado de pagamento.');
-      return;
-    }
-
-    if (editingPaymentId) {
-      debtService.updateDebtorPaymentData(selectedDebtor.id, editingPaymentId, {
-        type: paymentType,
-        description: paymentDescription.trim() || `Chave ${paymentType}`,
-        pixKeyType: paymentType === 'PIX' ? pixKeyType : undefined,
-        pixKey: paymentType === 'PIX' ? paymentInfo.trim() : undefined,
-        paymentInfo: paymentInfo.trim(),
-        active: paymentActive,
-      });
-      showToast(`Dado de pagamento atualizado com sucesso!`);
-    } else {
-      debtService.addDebtorPaymentData(selectedDebtor.id, {
-        type: paymentType,
-        description: paymentDescription.trim() || `Chave ${paymentType} ${pixKeyType}`,
-        pixKeyType: paymentType === 'PIX' ? pixKeyType : undefined,
-        pixKey: paymentType === 'PIX' ? paymentInfo.trim() : undefined,
-        paymentInfo: paymentInfo.trim(),
-        active: paymentActive,
-      });
-      showToast(`Novo dado de pagamento cadastrado com sucesso!`);
-    }
-    setIsPaymentModalOpen(false);
-  };
-
-  // Toggle payment data active
-  const handleTogglePaymentActive = (payment: DebtorPaymentData) => {
-    if (!selectedDebtor) return;
-    debtService.toggleDebtorPaymentDataStatus(selectedDebtor.id, payment.id);
-    showToast(
-      payment.active
-        ? `Dado de pagamento desativado.`
-        : `Dado de pagamento ativado.`
-    );
-  };
-
   return (
     <div className="p-space-lg lg:p-space-xl flex flex-col gap-space-lg max-w-[1720px] mx-auto w-full pb-20">
       {/* Header */}
@@ -258,7 +180,6 @@ export const BaseDevedoresView: React.FC<BaseDevedoresViewProps> = ({
               const isSelected = selectedDebtor?.id === d.id;
               const debtsCount = debtService.getDebtsByDebtorId(d.id).length;
               const activePhonesCount = d.phones ? d.phones.filter((p) => p.active).length : 0;
-              const activePaymentsCount = d.paymentData ? d.paymentData.filter((p) => p.active).length : 0;
 
               return (
                 <div
@@ -287,11 +208,11 @@ export const BaseDevedoresView: React.FC<BaseDevedoresViewProps> = ({
                   <div className="flex items-center justify-between text-xs pt-1">
                     <div className="flex items-center gap-2">
                       <span className="text-[10px] text-on-surface-variant">
-                        {activePhonesCount} fone(s)
+                        {activePhonesCount} telefone(s)
                       </span>
                       <span>•</span>
                       <span className="text-[10px] text-on-surface-variant">
-                        {activePaymentsCount} PIX/Dado(s)
+                        {debtsCount} título(s)
                       </span>
                     </div>
                     <span className="font-data-mono font-bold text-primary">
@@ -514,111 +435,6 @@ export const BaseDevedoresView: React.FC<BaseDevedoresViewProps> = ({
               </div>
             </div>
 
-            {/* =================================================================== */}
-            {/* 6. BASE DE DEVEDORES: DADOS DE PAGAMENTO (PIX / OUTROS)             */}
-            {/* =================================================================== */}
-            <div className="bg-surface-container-lowest rounded-xl shadow-sm border border-outline-variant/30 overflow-hidden flex flex-col">
-              <div className="p-3 bg-surface-container-low border-b border-outline-variant/20 flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <span className="material-symbols-outlined text-[18px] text-secondary">
-                    account_balance_wallet
-                  </span>
-                  <h3 className="font-title-md font-semibold text-primary uppercase text-xs tracking-wider">
-                    Dados de Pagamento ({selectedDebtor.paymentData?.length || 0})
-                  </h3>
-                </div>
-                <button
-                  type="button"
-                  onClick={handleOpenAddPayment}
-                  className="px-2.5 py-1 rounded-lg bg-secondary hover:bg-on-secondary-container text-on-secondary font-title-md text-xs font-semibold flex items-center gap-1 transition-colors cursor-pointer shadow-2xs"
-                >
-                  <span className="material-symbols-outlined text-[16px]">add</span>
-                  <span>Adicionar Dado de Pagamento</span>
-                </button>
-              </div>
-
-              <div className="p-3 flex flex-col gap-2">
-                {(!selectedDebtor.paymentData || selectedDebtor.paymentData.length === 0) ? (
-                  <div className="p-4 bg-surface-container-low rounded-lg border border-dashed border-outline-variant/30 text-center">
-                    <p className="text-xs text-on-surface-variant italic">
-                      Nenhum dado de pagamento cadastrado.
-                    </p>
-                  </div>
-                ) : (
-                  selectedDebtor.paymentData.map((p) => (
-                    <div
-                      key={p.id}
-                      className={`p-2.5 rounded-lg flex items-center justify-between gap-3 border transition-colors ${
-                        p.active
-                          ? 'bg-surface-container-low border-outline-variant/20 hover:border-secondary/40'
-                          : 'bg-surface-container/40 border-dashed border-outline-variant/30 opacity-70'
-                      }`}
-                    >
-                      <div className="flex flex-col min-w-0 flex-1">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <span className="px-2 py-0.5 rounded bg-secondary-container text-on-secondary-container font-badge-sm text-[10px] font-bold uppercase">
-                            {p.type} {p.pixKeyType ? `• ${p.pixKeyType}` : ''}
-                          </span>
-                          <strong className="text-xs font-semibold text-primary">
-                            {p.description}
-                          </strong>
-                          <span
-                            className={`px-1.5 py-0.5 rounded font-badge-sm text-[10px] font-bold ${
-                              p.active
-                                ? 'bg-secondary-container text-on-secondary-container'
-                                : 'bg-surface-container-highest text-outline'
-                            }`}
-                          >
-                            {p.active ? 'Ativo' : 'Inativo'}
-                          </span>
-                        </div>
-
-                        <div className="pt-1">
-                          <span className="font-data-mono text-xs text-on-surface font-bold select-all bg-surface-container-lowest px-2 py-0.5 rounded border border-outline-variant/20 inline-block">
-                            {p.paymentInfo || p.pixKey}
-                          </span>
-                        </div>
-                      </div>
-
-                      {/* Ações do Dado de Pagamento */}
-                      <div className="flex items-center gap-1 shrink-0">
-                        <button
-                          type="button"
-                          onClick={() => handleCopyText(p.paymentInfo || p.pixKey || '', 'Chave/Dado de Pagamento')}
-                          className="p-1.5 rounded hover:bg-surface-container text-on-surface-variant hover:text-secondary transition-colors cursor-pointer"
-                          title="Copiar chave/dado de pagamento"
-                        >
-                          <span className="material-symbols-outlined text-[16px]">content_copy</span>
-                        </button>
-
-                        <button
-                          type="button"
-                          onClick={() => handleOpenEditPayment(p)}
-                          className="p-1.5 rounded hover:bg-surface-container text-on-surface-variant hover:text-primary transition-colors cursor-pointer"
-                          title="Editar dado de pagamento"
-                        >
-                          <span className="material-symbols-outlined text-[16px]">edit</span>
-                        </button>
-
-                        <button
-                          type="button"
-                          onClick={() => handleTogglePaymentActive(p)}
-                          className={`px-2 py-1 rounded text-xs font-semibold transition-colors cursor-pointer ${
-                            p.active
-                              ? 'bg-surface-container text-on-surface-variant hover:bg-error-container hover:text-on-error-container'
-                              : 'bg-secondary-container text-on-secondary-container hover:bg-secondary hover:text-on-secondary'
-                          }`}
-                          title={p.active ? 'Desativar dado de pagamento (sem exclusão física)' : 'Reativar dado'}
-                        >
-                          {p.active ? 'Desativar' : 'Ativar'}
-                        </button>
-                      </div>
-                    </div>
-                  ))
-                )}
-              </div>
-            </div>
-
             {/* Debts Table for this Debtor */}
             <div className="bg-surface-container-lowest rounded-xl shadow-sm border border-outline-variant/30 overflow-hidden flex flex-col">
               <div className="p-3 bg-surface-container-low border-b border-outline-variant/20 flex items-center justify-between">
@@ -826,159 +642,6 @@ export const BaseDevedoresView: React.FC<BaseDevedoresViewProps> = ({
                   className="h-9 px-5 rounded-lg bg-primary hover:bg-primary-container text-surface font-semibold text-xs transition-colors cursor-pointer shadow-sm"
                 >
                   {editingPhoneId ? 'Salvar Alterações' : 'Cadastrar Telefone'}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* =================================================================== */}
-      {/* MODAL: ADICIONAR / EDITAR DADO DE PAGAMENTO                         */}
-      {/* =================================================================== */}
-      {isPaymentModalOpen && (
-        <div className="fixed inset-0 bg-primary/40 backdrop-blur-xs z-50 flex items-center justify-center p-4">
-          <div className="bg-surface-container-lowest rounded-xl shadow-2xl max-w-md w-full border border-outline-variant/30 overflow-hidden animate-fade-in">
-            <div className="p-4 bg-secondary text-on-secondary flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <span className="material-symbols-outlined text-[20px]">
-                  account_balance_wallet
-                </span>
-                <h3 className="font-title-md font-bold text-sm">
-                  {editingPaymentId ? 'Editar Dado de Pagamento' : 'Novo Dado de Pagamento / PIX'}
-                </h3>
-              </div>
-              <button
-                type="button"
-                onClick={() => setIsPaymentModalOpen(false)}
-                className="text-on-secondary hover:opacity-80 cursor-pointer"
-              >
-                ✕
-              </button>
-            </div>
-
-            <form onSubmit={handleSavePayment} className="p-4 space-y-3 text-xs">
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block font-label-uppercase font-bold text-outline mb-1 text-[10px]">
-                    FORMA DE PAGAMENTO *
-                  </label>
-                  <select
-                    className="w-full h-9 px-2 bg-surface-container-low rounded-lg text-xs font-semibold text-on-surface border border-outline-variant/30 focus:outline-none"
-                    value={paymentType}
-                    onChange={(e) => setPaymentType(e.target.value as PaymentDataType)}
-                  >
-                    <option value="PIX">PIX</option>
-                    <option value="Outro">Outro</option>
-                  </select>
-                </div>
-
-                {paymentType === 'PIX' ? (
-                  <div>
-                    <label className="block font-label-uppercase font-bold text-outline mb-1 text-[10px]">
-                      TIPO DA CHAVE PIX *
-                    </label>
-                    <select
-                      className="w-full h-9 px-2 bg-surface-container-low rounded-lg text-xs font-semibold text-on-surface border border-outline-variant/30 focus:outline-none"
-                      value={pixKeyType}
-                      onChange={(e) => setPixKeyType(e.target.value as PixKeyType)}
-                    >
-                      <option value="CNPJ">CNPJ</option>
-                      <option value="CPF">CPF</option>
-                      <option value="E-mail">E-mail</option>
-                      <option value="Telefone">Telefone</option>
-                      <option value="Aleatória">Aleatória</option>
-                      <option value="Outro">Outro</option>
-                    </select>
-                  </div>
-                ) : (
-                  <div>
-                    <label className="block font-label-uppercase font-bold text-outline mb-1 text-[10px]">
-                      STATUS
-                    </label>
-                    <label className="flex items-center gap-2 h-9 px-2 bg-surface-container-low rounded-lg border border-outline-variant/30 cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={paymentActive}
-                        onChange={(e) => setPaymentActive(e.target.checked)}
-                        className="accent-secondary h-4 w-4"
-                      />
-                      <span className="text-xs font-semibold text-on-surface">
-                        {paymentActive ? 'Ativo' : 'Inativo'}
-                      </span>
-                    </label>
-                  </div>
-                )}
-              </div>
-
-              <div>
-                <label className="block font-label-uppercase font-bold text-outline mb-1 text-[10px]">
-                  CHAVE PIX / INFORMAÇÃO DE PAGAMENTO *
-                </label>
-                <input
-                  type="text"
-                  required
-                  placeholder={
-                    paymentType === 'PIX'
-                      ? 'Informe a chave PIX exata (ex: 14.892.301/0001-44 ou financeiro@empresa.com)'
-                      : 'Informe os dados de pagamento'
-                  }
-                  className="w-full h-9 px-3 bg-surface-container-low rounded-lg font-data-mono text-sm text-on-surface border border-outline-variant/30 focus:outline-none focus:border-secondary"
-                  value={paymentInfo}
-                  onChange={(e) => setPaymentInfo(e.target.value)}
-                />
-              </div>
-
-              <div>
-                <label className="block font-label-uppercase font-bold text-outline mb-1 text-[10px]">
-                  DESCRIÇÃO / APELIDO *
-                </label>
-                <input
-                  type="text"
-                  placeholder="Ex: PIX Financeiro Principal, PIX Acordos Comerciais"
-                  className="w-full h-9 px-3 bg-surface-container-low rounded-lg text-xs text-on-surface border border-outline-variant/30 focus:outline-none focus:border-secondary"
-                  value={paymentDescription}
-                  onChange={(e) => setPaymentDescription(e.target.value)}
-                />
-              </div>
-
-              {paymentType === 'PIX' && (
-                <div className="p-2.5 bg-surface-container-low rounded-lg border border-outline-variant/30 flex items-center justify-between">
-                  <div>
-                    <span className="font-semibold text-on-surface block text-xs">
-                      Status do Registro
-                    </span>
-                    <span className="text-[11px] text-on-surface-variant">
-                      Chaves ativas ficam disponíveis para cópia na Ficha da Cobrança
-                    </span>
-                  </div>
-                  <label className="flex items-center gap-1.5 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={paymentActive}
-                      onChange={(e) => setPaymentActive(e.target.checked)}
-                      className="accent-secondary h-4 w-4"
-                    />
-                    <span className="text-xs font-semibold text-on-surface">
-                      {paymentActive ? 'Ativo' : 'Inativo'}
-                    </span>
-                  </label>
-                </div>
-              )}
-
-              <div className="pt-2 flex items-center justify-end gap-2 border-t border-outline-variant/20">
-                <button
-                  type="button"
-                  onClick={() => setIsPaymentModalOpen(false)}
-                  className="h-9 px-4 rounded-lg bg-surface-container hover:bg-surface-variant text-on-surface font-semibold text-xs transition-colors cursor-pointer"
-                >
-                  Cancelar
-                </button>
-                <button
-                  type="submit"
-                  className="h-9 px-5 rounded-lg bg-secondary hover:bg-on-secondary-container text-on-secondary font-semibold text-xs transition-colors cursor-pointer shadow-sm"
-                >
-                  {editingPaymentId ? 'Salvar Alterações' : 'Cadastrar Pagamento'}
                 </button>
               </div>
             </form>

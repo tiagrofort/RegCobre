@@ -4,10 +4,8 @@ import { debtService } from '../services/debtService';
 import {
   Debt,
   DebtorPhone,
-  DebtorPaymentData,
+  CompanyPaymentData,
   DebtorPhoneType,
-  PaymentDataType,
-  PixKeyType,
   ContactChannel,
   ContactResult,
   ContactRegistrationPayload,
@@ -92,15 +90,6 @@ export const FichaCobrancaView: React.FC<FichaCobrancaViewProps> = ({
   const [phoneHasWhatsApp, setPhoneHasWhatsApp] = useState(true);
   const [phoneActive, setPhoneActive] = useState(true);
 
-  // --- Payment Data Modal / Form State ---
-  const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
-  const [editingPaymentId, setEditingPaymentId] = useState<string | null>(null);
-  const [paymentType, setPaymentType] = useState<PaymentDataType>('PIX');
-  const [paymentDescription, setPaymentDescription] = useState('');
-  const [pixKeyType, setPixKeyType] = useState<PixKeyType>('CNPJ');
-  const [paymentInfo, setPaymentInfo] = useState('');
-  const [paymentActive, setPaymentActive] = useState(true);
-
   // Reset / populate form when debtId changes
   useEffect(() => {
     setIsFazActive(false);
@@ -133,20 +122,20 @@ export const FichaCobrancaView: React.FC<FichaCobrancaViewProps> = ({
   const activePhones = debtorPhones.filter((p) => p.active);
   const primaryPhone = activePhones[0] || null;
 
-  // Coleção oficial de dados de pagamento/PIX do devedor (sem inventar fallback fictício)
-  const debtorPayments: DebtorPaymentData[] = debtor.paymentData || [];
-  const activePayments = debtorPayments.filter((p) => p.active);
-  const primaryPayment = activePayments[0] || null;
+  // Dados de recebimento oficiais da EMPRESA para pagamento da cobrança
+  const companyPayments: CompanyPaymentData[] = debtService.getCompanyPaymentData();
+  const activeCompanyPayments = companyPayments.filter((p) => p.active);
+  const primaryCompanyPayment = debtService.getPrimaryCompanyPaymentData() || activeCompanyPayments[0] || null;
 
-  const handleCopyPaymentInfo = (payment?: DebtorPaymentData) => {
-    const target = payment || primaryPayment;
+  const handleCopyPaymentInfo = (payment?: CompanyPaymentData) => {
+    const target = payment || primaryCompanyPayment;
     if (!target) {
-      showToast('Nenhum dado de pagamento cadastrado.');
+      showToast('Nenhum dado de recebimento da empresa cadastrado.');
       return;
     }
-    const textToCopy = target.paymentInfo || target.pixKey || '';
+    const textToCopy = target.pixKey || target.paymentInfo || '';
     navigator.clipboard?.writeText(textToCopy);
-    showToast(`Dado de pagamento copiado: ${textToCopy} (${target.description})`);
+    showToast(`Dado de recebimento copiado: ${textToCopy} (${target.description})`);
     setIsPaymentDropdownOpen(false);
   };
 
@@ -161,13 +150,15 @@ export const FichaCobrancaView: React.FC<FichaCobrancaViewProps> = ({
     setIsPhoneDropdownOpen(false);
   };
 
-  const handleUsePaymentInNotes = (payment: DebtorPaymentData) => {
-    const payText = `Pagamento via ${payment.type}: ${payment.paymentInfo || payment.pixKey}${payment.pixKeyType ? ` (${payment.pixKeyType})` : ''} - ${payment.description}`;
+  const handleUsePaymentInNotes = (payment: CompanyPaymentData) => {
+    const bankDetails = payment.bankName ? ` [${payment.bankName}${payment.accountDescription ? ` - ${payment.accountDescription}` : ''}]` : '';
+    const payText = `Dados para Pagamento (Empresa): ${payment.type}${payment.pixKeyType ? ` (${payment.pixKeyType})` : ''}: ${payment.pixKey || payment.paymentInfo}${bankDetails} - ${payment.description}`;
     setNotes((prev) => (prev ? `${prev}\n${payText}` : payText));
     if (!isFazActive) {
       setIsFazActive(true);
     }
-    showToast('Dado de pagamento inserido na observação do contato!');
+    showToast('Dados de recebimento da empresa inseridos na observação!');
+    setIsPaymentDropdownOpen(false);
   };
 
   // --- Phone Handlers ---
@@ -228,69 +219,6 @@ export const FichaCobrancaView: React.FC<FichaCobrancaViewProps> = ({
       phone.active
         ? `Telefone ${phone.number} desativado.`
         : `Telefone ${phone.number} ativado.`
-    );
-  };
-
-  // --- Payment Data Handlers ---
-  const handleOpenAddPayment = () => {
-    setEditingPaymentId(null);
-    setPaymentType('PIX');
-    setPaymentDescription('');
-    setPixKeyType('CNPJ');
-    setPaymentInfo('');
-    setPaymentActive(true);
-    setIsPaymentModalOpen(true);
-  };
-
-  const handleOpenEditPayment = (payment: DebtorPaymentData) => {
-    setEditingPaymentId(payment.id);
-    setPaymentType(payment.type);
-    setPaymentDescription(payment.description);
-    setPixKeyType(payment.pixKeyType || 'CNPJ');
-    setPaymentInfo(payment.paymentInfo || payment.pixKey || '');
-    setPaymentActive(payment.active);
-    setIsPaymentModalOpen(true);
-  };
-
-  const handleSavePayment = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!debtor) return;
-    if (!paymentInfo.trim()) {
-      showToast('Por favor, informe a chave PIX ou dado de pagamento.');
-      return;
-    }
-
-    if (editingPaymentId) {
-      debtService.updateDebtorPaymentData(debtor.id, editingPaymentId, {
-        type: paymentType,
-        description: paymentDescription.trim() || `Chave ${paymentType}`,
-        pixKeyType: paymentType === 'PIX' ? pixKeyType : undefined,
-        pixKey: paymentType === 'PIX' ? paymentInfo.trim() : undefined,
-        paymentInfo: paymentInfo.trim(),
-        active: paymentActive,
-      });
-      showToast(`Dado de pagamento atualizado com sucesso!`);
-    } else {
-      debtService.addDebtorPaymentData(debtor.id, {
-        type: paymentType,
-        description: paymentDescription.trim() || `Chave ${paymentType} ${pixKeyType}`,
-        pixKeyType: paymentType === 'PIX' ? pixKeyType : undefined,
-        pixKey: paymentType === 'PIX' ? paymentInfo.trim() : undefined,
-        paymentInfo: paymentInfo.trim(),
-        active: paymentActive,
-      });
-      showToast(`Novo dado de pagamento cadastrado para ${debtor.name}!`);
-    }
-    setIsPaymentModalOpen(false);
-  };
-
-  const handleTogglePaymentActive = (payment: DebtorPaymentData) => {
-    if (!debtor) return;
-    debtService.toggleDebtorPaymentDataStatus(debtor.id, payment.id);
-    showToast(
-      payment.active
-        ? `Dado de pagamento desativado.`
-        : `Dado de pagamento ativado.`
     );
   };
 
@@ -546,19 +474,19 @@ export const FichaCobrancaView: React.FC<FichaCobrancaViewProps> = ({
               )}
             </div>
 
-            {/* BOTÃO 2: COPIAR PIX / DADOS (COM SUPORTE A MÚLTIPLOS DADOS DE PAGAMENTO) */}
+            {/* BOTÃO 2: COPIAR PIX / DADOS DE RECEBIMENTO DA EMPRESA */}
             <div className="relative">
               <div className="inline-flex rounded-lg shadow-2xs border border-outline-variant/30 bg-surface-container-lowest">
                 <button
-                  onClick={() => handleCopyPaymentInfo(primaryPayment)}
+                  onClick={() => handleCopyPaymentInfo(primaryCompanyPayment || undefined)}
                   className="h-9 px-3 hover:bg-surface-container text-on-surface font-label-uppercase text-xs tracking-wider inline-flex items-center gap-1.5 transition-colors cursor-pointer rounded-l-lg"
                   type="button"
-                  title="Copiar chave PIX / dados de pagamento"
+                  title={primaryCompanyPayment ? `Copiar dado principal da empresa: ${primaryCompanyPayment.description}` : 'Copiar dados de recebimento da empresa'}
                 >
-                  <span className="material-symbols-outlined text-[16px] text-secondary">account_balance_wallet</span>
+                  <span className="material-symbols-outlined text-[16px] text-secondary">account_balance</span>
                   <span>Copiar PIX / Dados</span>
                 </button>
-                {activePayments.length > 1 && (
+                {activeCompanyPayments.length > 1 && (
                   <button
                     onClick={() => {
                       setIsPaymentDropdownOpen(!isPaymentDropdownOpen);
@@ -566,7 +494,7 @@ export const FichaCobrancaView: React.FC<FichaCobrancaViewProps> = ({
                     }}
                     className="h-9 px-1.5 hover:bg-surface-container text-on-surface-variant hover:text-secondary transition-colors cursor-pointer border-l border-outline-variant/20 rounded-r-lg"
                     type="button"
-                    title={`Ver todos os ${activePayments.length} dados de pagamento ativos`}
+                    title={`Ver todos os ${activeCompanyPayments.length} dados de recebimento ativos da empresa`}
                   >
                     <span className="material-symbols-outlined text-[16px]">
                       {isPaymentDropdownOpen ? 'expand_less' : 'expand_more'}
@@ -575,37 +503,65 @@ export const FichaCobrancaView: React.FC<FichaCobrancaViewProps> = ({
                 )}
               </div>
 
-              {/* Dropdown de Dados de Pagamento */}
-              {isPaymentDropdownOpen && activePayments.length > 1 && (
-                <div className="absolute left-0 top-10 w-80 bg-surface-container-lowest rounded-xl shadow-xl border border-outline-variant/30 p-2 z-50 animate-fade-in flex flex-col gap-1">
+              {/* Dropdown de Dados de Recebimento da Empresa */}
+              {isPaymentDropdownOpen && activeCompanyPayments.length > 0 && (
+                <div className="absolute left-0 top-10 w-88 bg-surface-container-lowest rounded-xl shadow-xl border border-outline-variant/30 p-2 z-50 animate-fade-in flex flex-col gap-1">
                   <div className="px-2 py-1 text-[10px] font-label-uppercase font-bold text-outline border-b border-outline-variant/20 flex items-center justify-between">
-                    <span>Dados de Pagamento ({activePayments.length} ativos)</span>
+                    <span>Dados de Recebimento da Empresa ({activeCompanyPayments.length} ativos)</span>
                     <span className="text-[10px] text-secondary font-semibold">Clique para copiar</span>
                   </div>
-                  {activePayments.map((p) => (
-                    <button
+                  {activeCompanyPayments.map((p) => (
+                    <div
                       key={p.id}
-                      type="button"
-                      onClick={() => handleCopyPaymentInfo(p)}
-                      className="p-2 rounded-lg hover:bg-surface-container flex items-center justify-between text-left transition-colors cursor-pointer group"
+                      className="p-2 rounded-lg hover:bg-surface-container flex items-center justify-between text-left transition-colors group"
                     >
-                      <div className="flex flex-col min-w-0 pr-2">
-                        <div className="flex items-center gap-1.5">
+                      <button
+                        type="button"
+                        onClick={() => handleCopyPaymentInfo(p)}
+                        className="flex flex-col min-w-0 pr-2 flex-1 text-left cursor-pointer"
+                        title="Copiar este dado de recebimento"
+                      >
+                        <div className="flex items-center gap-1.5 flex-wrap">
                           <span className="px-1.5 py-0.2 rounded bg-secondary-container text-on-secondary-container text-[9px] font-bold uppercase">
                             {p.type} {p.pixKeyType ? `• ${p.pixKeyType}` : ''}
                           </span>
+                          {p.isPrimary && (
+                            <span className="px-1 py-0.2 rounded bg-primary-fixed text-on-primary-fixed text-[8px] font-bold uppercase">
+                              Principal
+                            </span>
+                          )}
                           <span className="text-xs font-semibold text-primary truncate max-w-[150px]">
                             {p.description}
                           </span>
                         </div>
                         <span className="font-data-mono text-[11px] text-on-surface font-semibold truncate mt-0.5 select-all">
-                          {p.paymentInfo || p.pixKey}
+                          {p.pixKey || p.paymentInfo}
                         </span>
+                        {p.bankName && (
+                          <span className="text-[10px] text-on-surface-variant truncate">
+                            {p.bankName}
+                          </span>
+                        )}
+                      </button>
+                      <div className="flex items-center gap-1 shrink-0">
+                        <button
+                          type="button"
+                          onClick={() => handleUsePaymentInNotes(p)}
+                          className="px-1.5 py-0.5 rounded bg-surface-container-high hover:bg-secondary-container text-[10px] text-primary font-semibold transition-colors cursor-pointer"
+                          title="Inserir nas observações da cobrança"
+                        >
+                          Usar
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleCopyPaymentInfo(p)}
+                          className="p-1 rounded hover:bg-surface-container text-on-surface-variant hover:text-secondary transition-colors cursor-pointer"
+                          title="Copiar"
+                        >
+                          <span className="material-symbols-outlined text-[14px]">content_copy</span>
+                        </button>
                       </div>
-                      <span className="material-symbols-outlined text-[14px] text-outline group-hover:text-secondary shrink-0">
-                        content_copy
-                      </span>
-                    </button>
+                    </div>
                   ))}
                 </div>
               )}
@@ -1717,114 +1673,78 @@ export const FichaCobrancaView: React.FC<FichaCobrancaViewProps> = ({
                 )}
               </div>
 
-              {/* DADOS PARA PAGAMENTO (CADASTRO DO DEVEDOR) */}
+              {/* DADOS DE RECEBIMENTO DA EMPRESA (PARA COBRANÇA) */}
               <div className="pt-2.5 border-t border-outline-variant/20">
                 <div className="flex items-center justify-between mb-1.5">
                   <div className="flex items-center gap-1.5">
                     <span className="material-symbols-outlined text-secondary text-[16px]">
-                      account_balance_wallet
+                      account_balance
                     </span>
                     <span className="text-outline font-label-uppercase text-[10px] font-bold">
-                      DADOS PARA PAGAMENTO ({debtorPayments.length})
-                    </span>
-                    <span className="text-[10px] text-on-surface-variant font-data-mono">
-                      • {activePayments.length} ativo(s)
+                      DADOS DE RECEBIMENTO DA EMPRESA ({activeCompanyPayments.length})
                     </span>
                   </div>
-                  <button
-                    type="button"
-                    onClick={handleOpenAddPayment}
-                    className="text-[11px] text-secondary hover:text-primary font-semibold inline-flex items-center gap-0.5 cursor-pointer bg-surface-container hover:bg-surface-variant px-2 py-0.5 rounded transition-colors"
-                    title="Cadastrar nova chave PIX / dado de pagamento"
-                  >
-                    <span className="material-symbols-outlined text-[13px]">add</span>
-                    <span>Adicionar</span>
-                  </button>
+                  <span className="text-[10px] text-secondary font-semibold font-data-mono">
+                    Chaves Corporativas
+                  </span>
                 </div>
 
-                {debtorPayments.length === 0 ? (
+                {activeCompanyPayments.length === 0 ? (
                   <div className="p-2.5 bg-surface-container-low rounded-lg border border-dashed border-outline-variant/30 text-center">
                     <p className="text-xs text-on-surface-variant italic">
-                      Nenhum dado de pagamento cadastrado.
+                      Nenhum dado de recebimento da empresa ativo.
                     </p>
                   </div>
                 ) : (
                   <div className="flex flex-col gap-1.5">
-                    {debtorPayments.map((p) => (
+                    {activeCompanyPayments.map((p) => (
                       <div
                         key={p.id}
-                        className={`p-2.5 rounded-lg flex flex-col gap-1 border transition-colors ${
-                          p.active
-                            ? 'bg-surface-container-low border-outline-variant/20 hover:border-secondary/40'
-                            : 'bg-surface-container/50 border-dashed border-outline-variant/30 opacity-60'
+                        className={`p-2.5 rounded-lg flex flex-col gap-1 border transition-colors bg-surface-container-low border-outline-variant/20 hover:border-secondary/40 ${
+                          p.isPrimary ? 'border-secondary/40 bg-surface-container-low/80' : ''
                         }`}
                       >
                         <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-1.5 truncate max-w-[190px]">
+                          <div className="flex items-center gap-1.5 truncate max-w-[200px]">
                             <span className="px-1.5 py-0.2 rounded bg-secondary-container text-on-secondary-container text-[9px] font-bold uppercase shrink-0">
                               {p.type} {p.pixKeyType ? `• ${p.pixKeyType}` : ''}
                             </span>
+                            {p.isPrimary && (
+                              <span className="px-1 py-0.2 rounded bg-primary-fixed text-on-primary-fixed text-[8px] font-bold uppercase shrink-0">
+                                Principal
+                              </span>
+                            )}
                             <span className="text-xs font-semibold text-primary truncate">
                               {p.description}
                             </span>
                           </div>
-                          <span
-                            className={`px-1 py-0.2 rounded font-badge-sm text-[9px] font-bold shrink-0 ${
-                              p.active
-                                ? 'bg-secondary-container text-on-secondary-container'
-                                : 'bg-surface-container-highest text-outline'
-                            }`}
-                          >
-                            {p.active ? 'Ativo' : 'Inativo'}
-                          </span>
+                          {p.bankName && (
+                            <span className="text-[10px] text-on-surface-variant font-data-mono truncate max-w-[100px]">
+                              {p.bankName}
+                            </span>
+                          )}
                         </div>
 
                         <div className="flex items-center justify-between gap-1.5 pt-0.5">
                           <span className="font-data-mono text-xs text-on-surface select-all truncate font-semibold">
-                            {p.paymentInfo || p.pixKey}
+                            {p.pixKey || p.paymentInfo}
                           </span>
                           <div className="flex items-center gap-1 shrink-0">
-                            {p.active && (
-                              <button
-                                type="button"
-                                onClick={() => handleUsePaymentInNotes(p)}
-                                className="px-1.5 py-0.5 rounded bg-surface-container hover:bg-surface-variant text-[10px] text-primary font-semibold transition-colors cursor-pointer"
-                                title="Inserir dado de pagamento nas observações da cobrança"
-                              >
-                                Usar
-                              </button>
-                            )}
                             <button
                               type="button"
-                              onClick={() => {
-                                const key = p.paymentInfo || p.pixKey || '';
-                                navigator.clipboard?.writeText(key);
-                                showToast(`Dado de pagamento copiado: ${key} (${p.description})`);
-                              }}
+                              onClick={() => handleUsePaymentInNotes(p)}
+                              className="px-1.5 py-0.5 rounded bg-surface-container hover:bg-secondary-container text-[10px] text-primary font-semibold transition-colors cursor-pointer"
+                              title="Inserir dado de recebimento da empresa nas observações da cobrança"
+                            >
+                              Usar na cobrança
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleCopyPaymentInfo(p)}
                               className="p-1 rounded hover:bg-surface-container text-on-surface-variant hover:text-secondary transition-colors cursor-pointer"
-                              title="Copiar chave/dado de pagamento"
+                              title="Copiar chave/dado de recebimento"
                             >
                               <span className="material-symbols-outlined text-[15px]">content_copy</span>
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => handleOpenEditPayment(p)}
-                              className="p-1 rounded hover:bg-surface-container text-on-surface-variant hover:text-primary transition-colors cursor-pointer"
-                              title="Editar dado de pagamento"
-                            >
-                              <span className="material-symbols-outlined text-[15px]">edit</span>
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => handleTogglePaymentActive(p)}
-                              className={`px-1.5 py-0.5 rounded text-[10px] font-semibold transition-colors cursor-pointer ${
-                                p.active
-                                  ? 'text-on-surface-variant hover:text-error hover:bg-error-container/40'
-                                  : 'text-secondary hover:bg-secondary-container/40'
-                              }`}
-                              title={p.active ? 'Desativar dado de pagamento (sem exclusão física)' : 'Reativar dado'}
-                            >
-                              {p.active ? 'Desativar' : 'Ativar'}
                             </button>
                           </div>
                         </div>
@@ -2081,164 +2001,6 @@ export const FichaCobrancaView: React.FC<FichaCobrancaViewProps> = ({
                   className="h-9 px-5 rounded-lg bg-primary hover:bg-primary-container text-surface font-semibold text-xs transition-colors cursor-pointer shadow-sm"
                 >
                   {editingPhoneId ? 'Salvar Alterações' : 'Cadastrar Telefone'}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* =================================================================== */}
-      {/* MODAL: ADICIONAR / EDITAR DADO DE PAGAMENTO NO DEVEDOR              */}
-      {/* =================================================================== */}
-      {isPaymentModalOpen && (
-        <div className="fixed inset-0 bg-primary/40 backdrop-blur-xs z-50 flex items-center justify-center p-4">
-          <div className="bg-surface-container-lowest rounded-xl shadow-2xl max-w-md w-full border border-outline-variant/30 overflow-hidden animate-fade-in">
-            <div className="p-4 bg-secondary text-on-secondary flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <span className="material-symbols-outlined text-[20px]">
-                  account_balance_wallet
-                </span>
-                <div>
-                  <h3 className="font-title-md font-bold text-sm">
-                    {editingPaymentId ? 'Editar Dado de Pagamento' : 'Novo Dado de Pagamento / PIX'}
-                  </h3>
-                  <span className="text-[10px] text-on-secondary/80 block truncate max-w-[260px]">
-                    {debtor.name}
-                  </span>
-                </div>
-              </div>
-              <button
-                type="button"
-                onClick={() => setIsPaymentModalOpen(false)}
-                className="text-on-secondary hover:opacity-80 cursor-pointer p-1 rounded"
-              >
-                ✕
-              </button>
-            </div>
-
-            <form onSubmit={handleSavePayment} className="p-4 space-y-3 text-xs">
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block font-label-uppercase font-bold text-outline mb-1 text-[10px]">
-                    FORMA *
-                  </label>
-                  <select
-                    className="w-full h-9 px-2 bg-surface-container-low rounded-lg text-xs font-semibold text-on-surface border border-outline-variant/30 focus:outline-none"
-                    value={paymentType}
-                    onChange={(e) => setPaymentType(e.target.value as PaymentDataType)}
-                  >
-                    <option value="PIX">PIX</option>
-                    <option value="Outro">Outro</option>
-                  </select>
-                </div>
-
-                {paymentType === 'PIX' ? (
-                  <div>
-                    <label className="block font-label-uppercase font-bold text-outline mb-1 text-[10px]">
-                      TIPO DE CHAVE *
-                    </label>
-                    <select
-                      className="w-full h-9 px-2 bg-surface-container-low rounded-lg text-xs font-semibold text-on-surface border border-outline-variant/30 focus:outline-none"
-                      value={pixKeyType}
-                      onChange={(e) => setPixKeyType(e.target.value as PixKeyType)}
-                    >
-                      <option value="CNPJ">CNPJ</option>
-                      <option value="CPF">CPF</option>
-                      <option value="E-mail">E-mail</option>
-                      <option value="Telefone">Telefone</option>
-                      <option value="Aleatória">Aleatória</option>
-                      <option value="Outro">Outro</option>
-                    </select>
-                  </div>
-                ) : (
-                  <div>
-                    <label className="block font-label-uppercase font-bold text-outline mb-1 text-[10px]">
-                      STATUS
-                    </label>
-                    <label className="flex items-center gap-2 h-9 px-2 bg-surface-container-low rounded-lg border border-outline-variant/30 cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={paymentActive}
-                        onChange={(e) => setPaymentActive(e.target.checked)}
-                        className="accent-secondary h-4 w-4"
-                      />
-                      <span className="text-xs font-semibold text-on-surface">
-                        {paymentActive ? 'Ativo' : 'Inativo'}
-                      </span>
-                    </label>
-                  </div>
-                )}
-              </div>
-
-              <div>
-                <label className="block font-label-uppercase font-bold text-outline mb-1 text-[10px]">
-                  CHAVE PIX / INFORMAÇÃO DE PAGAMENTO *
-                </label>
-                <input
-                  type="text"
-                  required
-                  placeholder={
-                    paymentType === 'PIX'
-                      ? 'Informe a chave PIX exata (ex: 14.892.301/0001-44 ou email@empresa.com)'
-                      : 'Informe os dados de pagamento'
-                  }
-                  className="w-full h-9 px-3 bg-surface-container-low rounded-lg font-data-mono text-sm text-on-surface border border-outline-variant/30 focus:outline-none focus:border-secondary"
-                  value={paymentInfo}
-                  onChange={(e) => setPaymentInfo(e.target.value)}
-                />
-              </div>
-
-              <div>
-                <label className="block font-label-uppercase font-bold text-outline mb-1 text-[10px]">
-                  DESCRIÇÃO / APELIDO *
-                </label>
-                <input
-                  type="text"
-                  placeholder="Ex: PIX Financeiro Principal, PIX Acordos Comerciais"
-                  className="w-full h-9 px-3 bg-surface-container-low rounded-lg text-xs text-on-surface border border-outline-variant/30 focus:outline-none focus:border-secondary"
-                  value={paymentDescription}
-                  onChange={(e) => setPaymentDescription(e.target.value)}
-                />
-              </div>
-
-              {paymentType === 'PIX' && (
-                <div className="p-2.5 bg-surface-container-low rounded-lg border border-outline-variant/30 flex items-center justify-between">
-                  <div>
-                    <span className="font-semibold text-on-surface block text-xs">
-                      Status da Chave
-                    </span>
-                    <span className="text-[11px] text-on-surface-variant">
-                      Chaves ativas ficam disponíveis para cópia rápida na Ficha
-                    </span>
-                  </div>
-                  <label className="flex items-center gap-1.5 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={paymentActive}
-                      onChange={(e) => setPaymentActive(e.target.checked)}
-                      className="accent-secondary h-4 w-4"
-                    />
-                    <span className="text-xs font-semibold text-on-surface">
-                      {paymentActive ? 'Ativo' : 'Inativo'}
-                    </span>
-                  </label>
-                </div>
-              )}
-
-              <div className="pt-2 flex items-center justify-end gap-2 border-t border-outline-variant/20">
-                <button
-                  type="button"
-                  onClick={() => setIsPaymentModalOpen(false)}
-                  className="h-9 px-4 rounded-lg bg-surface-container hover:bg-surface-variant text-on-surface font-semibold text-xs transition-colors cursor-pointer"
-                >
-                  Cancelar
-                </button>
-                <button
-                  type="submit"
-                  className="h-9 px-5 rounded-lg bg-secondary hover:bg-on-secondary-container text-on-secondary font-semibold text-xs transition-colors cursor-pointer shadow-sm"
-                >
-                  {editingPaymentId ? 'Salvar Alterações' : 'Cadastrar Pagamento'}
                 </button>
               </div>
             </form>
