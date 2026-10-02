@@ -241,7 +241,7 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess }) => {
                   ) : (
                     <>
                       <span className="material-symbols-outlined text-[18px]">login</span>
-                      <span>Entrar no Sistema RegCobre</span>
+                      <span>Entrar no RegCobre</span>
                     </>
                   )}
                 </button>
