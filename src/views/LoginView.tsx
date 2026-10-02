@@ -131,9 +131,10 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess }) => {
                   <button
                     type="button"
                     className="font-body-sm text-body-sm text-secondary hover:text-on-secondary-container transition-colors cursor-pointer"
-                    onClick={() =>
-                      alert('Instruções para redefinição enviadas para a equipe de TI local (Ramal 4000).')
-                    }
+                    onClick={() => {
+                      setToastMessage('Instruções para redefinição enviadas para a equipe de TI local (Ramal 4000).');
+                      setTimeout(() => setToastMessage(null), 4000);
+                    }}
                   >
                     Esqueci minha senha
                   </button>
@@ -283,9 +284,10 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess }) => {
                 <button
                   type="button"
                   className="hover:text-secondary flex items-center gap-1 transition-colors cursor-pointer"
-                  onClick={() =>
-                    alert('Norma Corporativa NC-084: O compartilhamento de credenciais constitui infração disciplinar severa.')
-                  }
+                  onClick={() => {
+                    setToastMessage('Norma Corporativa NC-084: O compartilhamento de credenciais constitui infração disciplinar severa.');
+                    setTimeout(() => setToastMessage(null), 4000);
+                  }}
                 >
                   <span className="material-symbols-outlined text-[14px]">policy</span>
                   Políticas de Segurança
