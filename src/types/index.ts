@@ -160,6 +160,35 @@ export interface DebtHistoryItem {
   };
 }
 
+export type SituacaoParcelaVenda = 'Paga' | 'Vencida' | 'A vencer';
+
+export interface VendaItem {
+  descricao: string;
+  quantidade?: number;
+  valorUnitario?: number;
+  valorTotal?: number;
+}
+
+export interface ParcelaVenda {
+  numero: number;
+  vencimento: string;
+  valor: number;
+  situacao: SituacaoParcelaVenda;
+  valorPago?: number;
+  dataPagamento?: string;
+}
+
+export interface VendaCobranca {
+  pedidoNumero?: string;
+  dataVenda?: string;
+  descricao?: string;
+  valorTotal?: number;
+  quantidadeParcelas?: number;
+  valorParcela?: number;
+  itens?: VendaItem[];
+  parcelas?: ParcelaVenda[];
+}
+
 export interface Debt {
   id: string;
   debtorId: string;
@@ -171,7 +200,7 @@ export interface Debt {
   titleNumber: string;
   installment: string; // e.g. "01/03"
   invoiceNumber: string; // e.g. "NF-e 4492"
-  descricaoCompra?: string;
+  vendaOrigem?: VendaCobranca;
   dueDate: string;
   daysOverdue: number;
   originalValue: number;

@@ -92,12 +92,16 @@ export const FichaCobrancaView: React.FC<FichaCobrancaViewProps> = ({
   const [phoneHasWhatsApp, setPhoneHasWhatsApp] = useState(true);
   const [phoneActive, setPhoneActive] = useState(true);
 
+  // Venda & Parcelamento expand/collapse state (initial closed)
+  const [isVendaExpanded, setIsVendaExpanded] = useState(false);
+
   // Reset / populate form when debtId changes
   useEffect(() => {
     setIsFazActive(false);
     setIsQueueFinishedNotice(false);
     setIsPhoneDropdownOpen(false);
     setIsPaymentDropdownOpen(false);
+    setIsVendaExpanded(false);
     if (debt) {
       setContactPerson(debt.debtorName.includes('Andrade') ? 'Dr. Marcos P. de Souza' : debtor.mainContact.name);
       const formatted = debt.currentValue.toLocaleString('pt-BR', {
@@ -666,23 +670,6 @@ export const FichaCobrancaView: React.FC<FichaCobrancaViewProps> = ({
                 </span>
               )}
             </div>
-
-            {/* Descrição da Compra (Origem da Cobrança) */}
-            {debt.descricaoCompra && (
-              <div className="mt-space-2xs pt-1.5 border-t border-outline-variant/25 flex items-start gap-1.5 text-xs text-on-surface-variant">
-                <span className="material-symbols-outlined text-[16px] text-primary shrink-0 mt-0.5" aria-hidden="true">
-                  shopping_bag
-                </span>
-                <div className="flex flex-col sm:flex-row sm:items-baseline gap-1">
-                  <span className="font-label-uppercase text-[11px] font-bold text-outline uppercase tracking-wider">
-                    Descrição da Compra:
-                  </span>
-                  <span className="font-semibold text-primary text-xs">
-                    {debt.descricaoCompra}
-                  </span>
-                </div>
-              </div>
-            )}
           </div>
 
           {/* Bloco Valores e Responsável Atual */}
@@ -1382,6 +1369,410 @@ export const FichaCobrancaView: React.FC<FichaCobrancaViewProps> = ({
               </table>
             </div>
           </div>
+
+          {/* ===================================================================== */}
+          {/* DADOS DA VENDA E PARCELAMENTO (ORIGEM DA COBRANÇA)                    */}
+          {/* ===================================================================== */}
+          {debt.vendaOrigem && (() => {
+            const venda = debt.vendaOrigem;
+            const parcelas = venda.parcelas || [];
+            const itens = venda.itens || [];
+
+            // Cálculos financeiros do parcelamento
+            const valorTotalVenda = venda.valorTotal ?? parcelas.reduce((acc, p) => acc + p.valor, 0);
+
+            // Total Pago: soma das parcelas pagas, considerando o valor efetivamente pago quando informado
+            const totalPago = parcelas
+              .filter((p) => p.situacao === 'Paga')
+              .reduce((acc, p) => acc + (p.valorPago !== undefined ? p.valorPago : p.valor), 0);
+
+            // Total Vencido: soma das parcelas com situação "Vencida"
+            const totalVencido = parcelas
+              .filter((p) => p.situacao === 'Vencida')
+              .reduce((acc, p) => acc + p.valor, 0);
+
+            // Total A vencer: soma das parcelas com situação "A vencer"
+            const totalAVencer = parcelas
+              .filter((p) => p.situacao === 'A vencer')
+              .reduce((acc, p) => acc + p.valor, 0);
+
+            // Em aberto: valor total da venda - total pago
+            const totalEmAberto = Math.max(0, valorTotalVenda - totalPago);
+
+            const totalParcelasQtd = venda.quantidadeParcelas ?? parcelas.length;
+            const valorParcelaBase = venda.valorParcela ?? (parcelas[0]?.valor ?? (totalParcelasQtd > 0 ? valorTotalVenda / totalParcelasQtd : 0));
+
+            // Identificar se a parcela corresponde à cobrança aberta
+            const isCurrentDebtInstallment = (pNum: number) => {
+              if (!debt.installment) return false;
+              const clean = debt.installment.trim();
+              const match = clean.match(/^(\d+)/);
+              if (match) {
+                return parseInt(match[1], 10) === pNum;
+              }
+              if (clean.toLowerCase().includes('única') && pNum === 1) {
+                return true;
+              }
+              return false;
+            };
+
+            return (
+              <div className="p-space-lg bg-surface-container-lowest rounded-xl shadow-sm flex flex-col border border-outline-variant/30 transition-all">
+                {/* Header Recolhível */}
+                <div
+                  onClick={() => setIsVendaExpanded(!isVendaExpanded)}
+                  className="flex items-center justify-between cursor-pointer select-none group"
+                  role="button"
+                  tabIndex={0}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      setIsVendaExpanded(!isVendaExpanded);
+                    }
+                  }}
+                  aria-expanded={isVendaExpanded}
+                >
+                  <div className="flex items-center gap-space-xs flex-wrap min-w-0">
+                    <span className="material-symbols-outlined text-primary text-[22px]">
+                      shopping_cart
+                    </span>
+                    <h2 className="font-headline-sm text-headline-sm text-on-surface font-semibold text-base group-hover:text-primary transition-colors">
+                      Dados da Venda
+                    </h2>
+
+                    {/* Resumo compacto na mesma linha */}
+                    <div className="flex items-center gap-1.5 text-xs text-on-surface-variant font-data-mono flex-wrap">
+                      <span className="text-outline-variant">•</span>
+                      {venda.pedidoNumero && (
+                        <span>
+                          Pedido <strong className="text-on-surface">{venda.pedidoNumero}</strong>
+                        </span>
+                      )}
+                      {venda.pedidoNumero && <span className="text-outline-variant">·</span>}
+                      <span>
+                        Total:{' '}
+                        <strong className="text-primary font-bold">
+                          R$ {valorTotalVenda.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                        </strong>
+                      </span>
+                      {totalParcelasQtd > 0 && (
+                        <>
+                          <span className="text-outline-variant">·</span>
+                          <span>
+                            {totalParcelasQtd}x de R${' '}
+                            <strong className="text-on-surface">
+                              {valorParcelaBase.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                            </strong>
+                          </span>
+                        </>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2 shrink-0">
+                    <span className="text-xs text-primary font-medium hidden sm:inline">
+                      {isVendaExpanded ? 'Recolher detalhes' : 'Ver detalhes e parcelas'}
+                    </span>
+                    <button
+                      type="button"
+                      className="p-1 rounded-full text-on-surface-variant group-hover:text-primary group-hover:bg-surface-container-high transition-colors"
+                      aria-label={isVendaExpanded ? 'Recolher' : 'Expandir'}
+                    >
+                      <span className="material-symbols-outlined text-[20px]">
+                        {isVendaExpanded ? 'expand_less' : 'expand_more'}
+                      </span>
+                    </button>
+                  </div>
+                </div>
+
+                {/* Conteúdo Detalhado (Expandido) */}
+                {isVendaExpanded && (
+                  <div className="mt-space-md pt-space-md border-t border-outline-variant/20 flex flex-col gap-space-lg">
+                    {/* A) DADOS GERAIS DA VENDA */}
+                    <div>
+                      <div className="flex items-center gap-1.5 mb-2 text-on-surface-variant font-label-uppercase text-xs font-bold tracking-wider">
+                        <span className="material-symbols-outlined text-[16px] text-primary">
+                          receipt_long
+                        </span>
+                        <span>Origem Financeira da Venda</span>
+                      </div>
+
+                      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 p-3 bg-surface-container-low rounded-lg border border-outline-variant/20 text-xs">
+                        <div>
+                          <span className="text-outline block font-label-uppercase text-[10px]">
+                            PEDIDO
+                          </span>
+                          <strong className="text-primary font-data-mono">
+                            {venda.pedidoNumero || 'Não informado'}
+                          </strong>
+                        </div>
+                        <div>
+                          <span className="text-outline block font-label-uppercase text-[10px]">
+                            DATA DA VENDA
+                          </span>
+                          <strong className="text-on-surface font-data-mono">
+                            {venda.dataVenda || 'Não informada'}
+                          </strong>
+                        </div>
+                        <div>
+                          <span className="text-outline block font-label-uppercase text-[10px]">
+                            NOTA FISCAL
+                          </span>
+                          <strong className="text-on-surface font-data-mono">
+                            {debt.invoiceNumber || 'Não informada'}
+                          </strong>
+                        </div>
+                        <div>
+                          <span className="text-outline block font-label-uppercase text-[10px]">
+                            VALOR TOTAL
+                          </span>
+                          <strong className="text-primary font-data-mono font-bold">
+                            R$ {valorTotalVenda.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                          </strong>
+                        </div>
+                        <div>
+                          <span className="text-outline block font-label-uppercase text-[10px]">
+                            PARCELAMENTO
+                          </span>
+                          <strong className="text-on-surface font-data-mono">
+                            {totalParcelasQtd > 0
+                              ? `${totalParcelasQtd}x de R$ ${valorParcelaBase.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`
+                              : 'À vista'}
+                          </strong>
+                        </div>
+                      </div>
+
+                      {venda.descricao && (
+                        <div className="mt-2 text-xs text-on-surface-variant bg-surface-container-low/50 px-3 py-1.5 rounded border border-outline-variant/15">
+                          <span className="font-semibold text-on-surface">Descrição: </span>
+                          <span>{venda.descricao}</span>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* B) ITENS DA VENDA (OPCIONAL) */}
+                    {itens.length > 0 && (
+                      <div>
+                        <div className="flex items-center justify-between mb-2">
+                          <span className="font-label-uppercase text-xs font-bold text-on-surface-variant flex items-center gap-1.5 tracking-wider">
+                            <span className="material-symbols-outlined text-[16px] text-primary">
+                              inventory_2
+                            </span>
+                            <span>Itens da Venda ({itens.length})</span>
+                          </span>
+                        </div>
+
+                        <div className="overflow-x-auto rounded-lg border border-outline-variant/20">
+                          <table className="w-full text-left font-body-sm text-xs">
+                            <thead>
+                              <tr className="bg-surface-container-low text-on-surface-variant font-label-uppercase tracking-wider">
+                                <th className="py-2 px-3">Produto / Serviço</th>
+                                <th className="py-2 px-3 text-center">Qtd.</th>
+                                <th className="py-2 px-3 text-right">Valor Unitário</th>
+                                <th className="py-2 px-3 text-right">Total</th>
+                              </tr>
+                            </thead>
+                            <tbody className="divide-y divide-outline-variant/15 bg-surface-container-lowest">
+                              {itens.map((it, idx) => (
+                                <tr key={idx} className="hover:bg-surface-container-low/50 transition-colors">
+                                  <td className="py-2 px-3 font-medium text-on-surface">
+                                    {it.descricao}
+                                  </td>
+                                  <td className="py-2 px-3 text-center font-data-mono text-on-surface">
+                                    {it.quantidade ?? 1}
+                                  </td>
+                                  <td className="py-2 px-3 text-right font-data-mono text-on-surface-variant">
+                                    {it.valorUnitario !== undefined
+                                      ? `R$ ${it.valorUnitario.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`
+                                      : '—'}
+                                  </td>
+                                  <td className="py-2 px-3 text-right font-data-mono font-bold text-primary">
+                                    {it.valorTotal !== undefined
+                                      ? `R$ ${it.valorTotal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`
+                                      : it.quantidade !== undefined && it.valorUnitario !== undefined
+                                      ? `R$ ${(it.quantidade * it.valorUnitario).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`
+                                      : '—'}
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* C) PARCELAMENTO & RESUMO FINANCEIRO */}
+                    {parcelas.length > 0 && (
+                      <div>
+                        <div className="flex items-center justify-between mb-2">
+                          <span className="font-label-uppercase text-xs font-bold text-on-surface-variant flex items-center gap-1.5 tracking-wider">
+                            <span className="material-symbols-outlined text-[16px] text-secondary">
+                              calendar_month
+                            </span>
+                            <span>
+                              Parcelamento — {totalParcelasQtd}x de R${' '}
+                              {valorParcelaBase.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                            </span>
+                          </span>
+                        </div>
+
+                        {/* Cards Resumo Financeiro do Parcelamento */}
+                        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2 mb-3">
+                          <div className="p-2.5 bg-surface-container-low rounded-lg border border-outline-variant/20 flex flex-col">
+                            <span className="text-outline font-label-uppercase text-[10px]">
+                              Venda Total
+                            </span>
+                            <span className="font-data-mono font-bold text-sm text-on-surface mt-0.5">
+                              R$ {valorTotalVenda.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                            </span>
+                          </div>
+
+                          <div className="p-2.5 bg-surface-container-low rounded-lg border border-outline-variant/20 flex flex-col">
+                            <span className="text-outline font-label-uppercase text-[10px]">
+                              Parcelamento
+                            </span>
+                            <span className="font-data-mono font-semibold text-xs text-on-surface mt-0.5">
+                              {totalParcelasQtd}x de R${' '}
+                              {valorParcelaBase.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                            </span>
+                          </div>
+
+                          <div className="p-2.5 bg-emerald-50/70 rounded-lg border border-emerald-200/50 flex flex-col">
+                            <span className="text-emerald-800 font-label-uppercase text-[10px] font-semibold">
+                              Pago
+                            </span>
+                            <span className="font-data-mono font-bold text-sm text-emerald-700 mt-0.5">
+                              R$ {totalPago.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                            </span>
+                          </div>
+
+                          <div className="p-2.5 bg-rose-50/70 rounded-lg border border-rose-200/50 flex flex-col">
+                            <span className="text-rose-800 font-label-uppercase text-[10px] font-semibold">
+                              Vencido
+                            </span>
+                            <span className="font-data-mono font-bold text-sm text-rose-700 mt-0.5">
+                              R$ {totalVencido.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                            </span>
+                          </div>
+
+                          <div className="p-2.5 bg-slate-50 rounded-lg border border-slate-200 flex flex-col">
+                            <span className="text-slate-700 font-label-uppercase text-[10px] font-semibold">
+                              A Vencer
+                            </span>
+                            <span className="font-data-mono font-semibold text-sm text-slate-700 mt-0.5">
+                              R$ {totalAVencer.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                            </span>
+                          </div>
+
+                          <div className="p-2.5 bg-primary-container/20 rounded-lg border border-primary/30 flex flex-col">
+                            <span className="text-primary font-label-uppercase text-[10px] font-bold">
+                              Em Aberto
+                            </span>
+                            <span className="font-data-mono font-bold text-sm text-primary mt-0.5">
+                              R$ {totalEmAberto.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                            </span>
+                          </div>
+                        </div>
+
+                        {/* Tabela de Parcelas */}
+                        <div className="overflow-x-auto rounded-lg border border-outline-variant/20">
+                          <table className="w-full text-left font-body-sm text-xs">
+                            <thead>
+                              <tr className="bg-surface-container-low text-on-surface-variant font-label-uppercase tracking-wider">
+                                <th className="py-2 px-3">Parcela</th>
+                                <th className="py-2 px-3">Vencimento</th>
+                                <th className="py-2 px-3 text-right">Valor</th>
+                                <th className="py-2 px-3">Situação</th>
+                                <th className="py-2 px-3">Informações Adicionais</th>
+                              </tr>
+                            </thead>
+                            <tbody className="divide-y divide-outline-variant/15 bg-surface-container-lowest">
+                              {parcelas.map((parc) => {
+                                const isCurrent = isCurrentDebtInstallment(parc.numero);
+                                const parcFormatted = `${String(parc.numero).padStart(2, '0')}/${String(totalParcelasQtd).padStart(2, '0')}`;
+
+                                return (
+                                  <tr
+                                    key={parc.numero}
+                                    className={`transition-colors ${
+                                      isCurrent
+                                        ? 'bg-primary/5 hover:bg-primary/10 border-l-[3px] border-l-primary'
+                                        : 'hover:bg-surface-container-low/50'
+                                    }`}
+                                  >
+                                    <td className="py-2.5 px-3 font-data-mono font-semibold text-on-surface">
+                                      <div className="flex items-center gap-2">
+                                        <span>{parcFormatted}</span>
+                                        {isCurrent && (
+                                          <span className="px-1.5 py-0.5 rounded bg-primary text-surface font-badge-sm text-[9px] font-bold uppercase tracking-wider">
+                                            Cobrança Atual
+                                          </span>
+                                        )}
+                                      </div>
+                                    </td>
+                                    <td className="py-2.5 px-3 font-data-mono text-on-surface">
+                                      {parc.vencimento}
+                                    </td>
+                                    <td className="py-2.5 px-3 font-data-mono font-bold text-on-surface text-right">
+                                      R$ {parc.valor.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                                    </td>
+                                    <td className="py-2.5 px-3">
+                                      <span
+                                        className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded font-badge-sm text-[10px] font-semibold ${
+                                          parc.situacao === 'Paga'
+                                            ? 'bg-emerald-100 text-emerald-800 border border-emerald-200/60'
+                                            : parc.situacao === 'Vencida'
+                                            ? 'bg-rose-100 text-rose-800 border border-rose-200/60'
+                                            : 'bg-slate-100 text-slate-700 border border-slate-200/60'
+                                        }`}
+                                      >
+                                        <span
+                                          className={`w-1.5 h-1.5 rounded-full ${
+                                            parc.situacao === 'Paga'
+                                              ? 'bg-emerald-600'
+                                              : parc.situacao === 'Vencida'
+                                              ? 'bg-rose-600'
+                                              : 'bg-slate-400'
+                                          }`}
+                                        />
+                                        <span>{parc.situacao}</span>
+                                      </span>
+                                    </td>
+                                    <td className="py-2.5 px-3 text-on-surface-variant font-data-mono text-[11px]">
+                                      {parc.situacao === 'Paga' ? (
+                                        <span className="text-emerald-700">
+                                          Pago:{' '}
+                                          <strong>
+                                            R${' '}
+                                            {(parc.valorPago ?? parc.valor).toLocaleString('pt-BR', {
+                                              minimumFractionDigits: 2,
+                                            })}
+                                          </strong>
+                                          {parc.dataPagamento ? ` em ${parc.dataPagamento}` : ''}
+                                        </span>
+                                      ) : parc.situacao === 'Vencida' ? (
+                                        <span className="text-rose-700">
+                                          {isCurrent ? 'Cobrança em andamento na ficha' : 'Aguardando liquidação'}
+                                        </span>
+                                      ) : (
+                                        <span className="text-on-surface-variant italic">
+                                          Parcela futura
+                                        </span>
+                                      )}
+                                    </td>
+                                  </tr>
+                                );
+                              })}
+                            </tbody>
+                          </table>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            );
+          })()}
 
           {/* ===================================================================== */}
           {/* 5. HISTÓRICO DA COBRANÇA (TIMELINE PERMANENTE)                        */}
