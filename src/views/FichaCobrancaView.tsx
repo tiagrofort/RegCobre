@@ -666,6 +666,23 @@ export const FichaCobrancaView: React.FC<FichaCobrancaViewProps> = ({
                 </span>
               )}
             </div>
+
+            {/* Descrição da Compra (Origem da Cobrança) */}
+            {debt.descricaoCompra && (
+              <div className="mt-space-2xs pt-1.5 border-t border-outline-variant/25 flex items-start gap-1.5 text-xs text-on-surface-variant">
+                <span className="material-symbols-outlined text-[16px] text-primary shrink-0 mt-0.5" aria-hidden="true">
+                  shopping_bag
+                </span>
+                <div className="flex flex-col sm:flex-row sm:items-baseline gap-1">
+                  <span className="font-label-uppercase text-[11px] font-bold text-outline uppercase tracking-wider">
+                    Descrição da Compra:
+                  </span>
+                  <span className="font-semibold text-primary text-xs">
+                    {debt.descricaoCompra}
+                  </span>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Bloco Valores e Responsável Atual */}

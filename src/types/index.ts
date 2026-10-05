@@ -171,6 +171,7 @@ export interface Debt {
   titleNumber: string;
   installment: string; // e.g. "01/03"
   invoiceNumber: string; // e.g. "NF-e 4492"
+  descricaoCompra?: string;
   dueDate: string;
   daysOverdue: number;
   originalValue: number;
