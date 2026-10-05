@@ -10,6 +10,7 @@ import {
   ContactResult,
   ContactRegistrationPayload,
 } from '../types';
+import { getDebtStatusRowStyle } from '../utils/debtStatusStyles';
 
 interface FichaCobrancaViewProps {
   debtId: string;
@@ -47,6 +48,7 @@ export const FichaCobrancaView: React.FC<FichaCobrancaViewProps> = ({
   const debt = debtService.getDebtById(debtId) || debtService.getAllDebts()[0];
   const debtor = debtService.getDebtorById(debt.debtorId) || debtService.getAllDebtors()[0];
   const debtorDebts = debtService.getDebtsByDebtorId(debt.debtorId);
+  const currentStatusStyle = getDebtStatusRowStyle(debt.status);
 
   // FAZ action mode state: whether the registration form is open/active
   const [isFazActive, setIsFazActive] = useState(false);
@@ -637,8 +639,19 @@ export const FichaCobrancaView: React.FC<FichaCobrancaViewProps> = ({
               </span>
               <span className="text-outline-variant">•</span>
 
-              {/* DESTAQUES VISUAIS CONFORME STATUS DA COBRANÇA */}
-              {/* 1. Vencida */}
+              {/* STATUS ATUAL DA COBRANÇA */}
+              <span
+                className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md font-badge-sm text-xs font-semibold uppercase tracking-wider ${currentStatusStyle.badgeClass}`}
+                title={`Status da Cobrança: ${currentStatusStyle.label}`}
+              >
+                <span
+                  className={`w-2 h-2 rounded-full shrink-0 ${currentStatusStyle.indicatorClass}`}
+                  aria-hidden="true"
+                />
+                <span>{debt.statusLabel || currentStatusStyle.label}</span>
+              </span>
+
+              {/* Informações de Vencimento / Atraso */}
               {debt.daysOverdue > 0 && (
                 <span className="px-2.5 py-1 rounded bg-error-container text-on-error-container font-badge-sm text-xs font-bold flex items-center gap-1.5 border border-error/30 shadow-2xs">
                   <span className="w-2 h-2 rounded-full bg-error animate-pulse" />
@@ -646,42 +659,12 @@ export const FichaCobrancaView: React.FC<FichaCobrancaViewProps> = ({
                 </span>
               )}
 
-              {/* 2. Vencendo hoje */}
               {debt.daysOverdue === 0 && (
                 <span className="px-2.5 py-1 rounded bg-amber-100 text-amber-900 font-badge-sm text-xs font-bold flex items-center gap-1.5 border border-amber-300">
                   <span className="w-2 h-2 rounded-full bg-amber-600" />
                   <span>Vence Hoje</span>
                 </span>
               )}
-
-              {/* 3. Paga */}
-              {(debt.status === 'pago' || debt.statusLabel.toLowerCase().includes('pago') || debt.statusLabel.toLowerCase().includes('liquidado')) && (
-                <span className="px-2.5 py-1 rounded bg-secondary text-on-secondary font-badge-sm text-xs font-bold flex items-center gap-1.5">
-                  <span className="material-symbols-outlined text-[14px]">check_circle</span>
-                  <span>Paga / Liquidada</span>
-                </span>
-              )}
-
-              {/* 4. Em negociação */}
-              {(debt.status === 'em_negociacao' || debt.statusLabel.toLowerCase().includes('negociação')) && (
-                <span className="px-2.5 py-1 rounded bg-primary-fixed text-on-primary-fixed font-badge-sm text-xs font-bold flex items-center gap-1.5">
-                  <span className="material-symbols-outlined text-[14px]">sync</span>
-                  <span>Em Negociação</span>
-                </span>
-              )}
-
-              {/* 5. Aguardando retorno */}
-              {(debt.status === 'retorno_agendado' || debt.statusLabel.toLowerCase().includes('retorno')) && (
-                <span className="px-2.5 py-1 rounded bg-tertiary-fixed text-on-tertiary-fixed font-badge-sm text-xs font-bold flex items-center gap-1.5">
-                  <span className="material-symbols-outlined text-[14px]">schedule</span>
-                  <span>Aguardando Retorno</span>
-                </span>
-              )}
-
-              {/* Status Geral Label */}
-              <span className="px-2 py-0.5 rounded bg-surface-container-high text-on-surface-variant font-badge-sm text-[11px] font-semibold">
-                {debt.statusLabel}
-              </span>
             </div>
           </div>
 
@@ -1838,9 +1821,19 @@ export const FichaCobrancaView: React.FC<FichaCobrancaViewProps> = ({
                       <span className="text-on-surface-variant truncate max-w-[140px]">
                         Resp: <strong className="text-on-surface">{d.assignedTo.name}</strong>
                       </span>
-                      <span className="px-1.5 py-0.5 rounded bg-surface-container-high text-on-surface font-badge-sm text-[10px] font-semibold">
-                        {d.statusLabel}
-                      </span>
+                      {(() => {
+                        const dStyle = getDebtStatusRowStyle(d.status);
+                        return (
+                          <span
+                            className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded font-badge-sm text-[10px] font-semibold ${dStyle.badgeClass}`}
+                          >
+                            <span
+                              className={`w-1.5 h-1.5 rounded-full shrink-0 ${dStyle.indicatorClass}`}
+                            />
+                            <span>{d.statusLabel || dStyle.label}</span>
+                          </span>
+                        );
+                      })()}
                     </div>
 
                     <div className="flex items-center justify-between text-[10px] text-on-surface-variant pt-0.5">
