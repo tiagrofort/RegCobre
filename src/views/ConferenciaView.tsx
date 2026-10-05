@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { debtService } from '../services/debtService';
 import { Debt } from '../types';
 import { PdfPreviewModal } from '../components/PdfPreviewModal';
+import { getDebtStatusRowClass, getDebtStatusRowStyle } from '../utils/debtStatusStyles';
 
 interface ConferenciaViewProps {
   onSelectDebt: (debtId: string) => void;
@@ -536,6 +537,7 @@ export const ConferenciaView: React.FC<ConferenciaViewProps> = ({ onSelectDebt }
               </thead>
               <tbody className="divide-y divide-surface-container">
                 {filteredDebts.map((d) => {
+                  const statusStyle = getDebtStatusRowStyle(d.status);
                   const initials = d.assignedTo.name
                     .split(' ')
                     .map((n) => n[0])
@@ -545,19 +547,14 @@ export const ConferenciaView: React.FC<ConferenciaViewProps> = ({ onSelectDebt }
                   return (
                     <tr
                       key={d.id}
-                      className="hover:bg-surface-container-low transition-colors group cursor-pointer"
+                      className={`transition-colors group cursor-pointer ${getDebtStatusRowClass(d.status)}`}
                       onClick={() => onSelectDebt(d.id)}
                     >
                       <td className="py-2 px-3 whitespace-nowrap">
                         <div className="flex items-center gap-1.5">
                           <span
-                            className={`w-2 h-2 rounded-full ${
-                              d.status === 'pago' || d.status === 'promessa_firme'
-                                ? 'bg-secondary'
-                                : d.status === 'quebrou_acordo'
-                                ? 'bg-error'
-                                : 'bg-on-surface-variant'
-                            }`}
+                            className={`w-2 h-2 rounded-full shrink-0 ${statusStyle.indicatorClass}`}
+                            title={`Status: ${statusStyle.label}`}
                           ></span>
                           <div className="font-data-mono text-data-mono font-medium text-primary">
                             {d.lastContact?.date || '04/11'} {d.lastContact?.time || '11:15'}

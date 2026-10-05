@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { debtService } from '../services/debtService';
 import { Debt } from '../types';
+import { getDebtStatusRowClass, getDebtStatusRowStyle } from '../utils/debtStatusStyles';
 
 interface MinhaCarteiraViewProps {
   onSelectDebt: (debtId: string) => void;
@@ -259,20 +260,24 @@ export const MinhaCarteiraView: React.FC<MinhaCarteiraViewProps> = ({
               <tbody className="divide-y divide-surface-container-high font-body-sm text-body-sm">
                 {filteredDebts.map((d) => {
                   const isSelected = selectedDebtId === d.id;
+                  const statusStyle = getDebtStatusRowStyle(d.status);
 
                   return (
                     <tr
                       key={d.id}
                       onClick={() => handleSelectDebtForDrawer(d)}
-                      className={`transition-colors cursor-pointer group ${
+                      className={`transition-colors cursor-pointer group ${getDebtStatusRowClass(
+                        d.status,
                         isSelected
-                          ? 'bg-surface-container-high/70 border-l-4 border-primary'
-                          : 'hover:bg-surface-container-low'
-                      }`}
+                      )}`}
                     >
                       <td className="py-2 px-3">
                         <div className="flex flex-col">
                           <div className="flex items-center gap-1.5">
+                            <span
+                              className={`w-1.5 h-1.5 rounded-full shrink-0 ${statusStyle.indicatorClass}`}
+                              title={`Status: ${statusStyle.label}`}
+                            />
                             <span className="font-title-md text-title-md font-semibold text-on-surface truncate max-w-[180px] group-hover:text-primary">
                               {d.debtorName}
                             </span>

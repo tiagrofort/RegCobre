@@ -6,6 +6,7 @@ import {
   DebtorPhone,
   DebtorPhoneType,
 } from '../types';
+import { getDebtStatusRowClass, getDebtStatusRowStyle } from '../utils/debtStatusStyles';
 
 interface BaseDevedoresViewProps {
   onSelectDebt: (debtId: string) => void;
@@ -466,11 +467,22 @@ export const BaseDevedoresView: React.FC<BaseDevedoresViewProps> = ({
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-surface-container-high">
-                    {relatedDebts.map((d) => (
-                      <tr key={d.id} className="hover:bg-surface-container-low transition-colors">
-                        <td className="py-2.5 px-3 font-data-mono font-bold text-primary">
-                          {d.titleNumber}
-                        </td>
+                    {relatedDebts.map((d) => {
+                      const statusStyle = getDebtStatusRowStyle(d.status);
+                      return (
+                        <tr
+                          key={d.id}
+                          className={`transition-colors ${getDebtStatusRowClass(d.status)}`}
+                        >
+                          <td className="py-2.5 px-3 font-data-mono font-bold text-primary">
+                            <div className="flex items-center gap-1.5">
+                              <span
+                                className={`w-1.5 h-1.5 rounded-full shrink-0 ${statusStyle.indicatorClass}`}
+                                title={`Status: ${statusStyle.label}`}
+                              />
+                              <span>{d.titleNumber}</span>
+                            </div>
+                          </td>
                         <td className="py-2.5 px-3 font-data-mono">{d.installment}</td>
                         <td className="py-2.5 px-3 font-data-mono">
                           {d.dueDate}
@@ -515,7 +527,8 @@ export const BaseDevedoresView: React.FC<BaseDevedoresViewProps> = ({
                           </button>
                         </td>
                       </tr>
-                    ))}
+                    );
+                  })}
                   </tbody>
                 </table>
               </div>

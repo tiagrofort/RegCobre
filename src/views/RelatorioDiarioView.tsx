@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { debtService } from '../services/debtService';
 import { useAuth } from '../context/AuthContext';
 import { ContactChannel, ContactResult } from '../types';
+import { getDebtStatusRowClass, getDebtStatusRowStyle } from '../utils/debtStatusStyles';
 
 interface RelatorioDiarioViewProps {
   onOpenFinishModal?: () => void;
@@ -374,26 +375,31 @@ export const RelatorioDiarioView: React.FC<RelatorioDiarioViewProps> = ({
                   const d = item.debt;
                   const isTrabalhada = item.status === 'Trabalhada';
                   const lastHist = d.history[0];
+                  const statusStyle = getDebtStatusRowStyle(d.status);
 
                   return (
                     <tr
                       key={item.id}
-                      className={`transition-colors ${
-                        isTrabalhada
-                          ? 'hover:bg-surface-container-low bg-surface-container-lowest'
-                          : 'bg-surface-container-low/30 hover:bg-surface-container-low'
+                      className={`transition-colors ${getDebtStatusRowClass(d.status)} ${
+                        !isTrabalhada ? 'opacity-85' : ''
                       }`}
                     >
                       {/* Devedor */}
                       <td className="py-2.5 px-3">
                         <div className="flex flex-col">
-                          <button
-                            type="button"
-                            onClick={() => onSelectDebt && onSelectDebt(d.id)}
-                            className="font-title-md font-semibold text-primary hover:underline text-left cursor-pointer truncate max-w-[220px]"
-                          >
-                            {d.debtorName}
-                          </button>
+                          <div className="flex items-center gap-1.5">
+                            <span
+                              className={`w-1.5 h-1.5 rounded-full shrink-0 ${statusStyle.indicatorClass}`}
+                              title={`Status: ${statusStyle.label}`}
+                            />
+                            <button
+                              type="button"
+                              onClick={() => onSelectDebt && onSelectDebt(d.id)}
+                              className="font-title-md font-semibold text-primary hover:underline text-left cursor-pointer truncate max-w-[220px]"
+                            >
+                              {d.debtorName}
+                            </button>
+                          </div>
                           <span className="font-data-mono text-[10px] text-on-surface-variant">
                             CNPJ/CPF: {d.debtorCnpjCpf}
                           </span>
