@@ -1,17 +1,24 @@
 import React, { useState, useEffect } from 'react';
 import { debtService } from '../services/debtService';
-import { CompanyPaymentData, PaymentDataType, PixKeyType } from '../types';
+import { CompanyPaymentData, PaymentDataType, PixKeyType, Empresa } from '../types';
 
 export const DadosRecebimentoEmpresaView: React.FC = () => {
+  const [empresas, setEmpresas] = useState<Empresa[]>(debtService.getAllEmpresas());
+  const [selectedEmpresaFilter, setSelectedEmpresaFilter] = useState<string>('all');
   const [payments, setPayments] = useState<CompanyPaymentData[]>(debtService.getCompanyPaymentData());
   const [toastMsg, setToastMsg] = useState<string | null>(null);
 
   // Subscribe to service updates
   useEffect(() => {
     return debtService.subscribe(() => {
-      setPayments(debtService.getCompanyPaymentData());
+      setEmpresas(debtService.getAllEmpresas());
+      setPayments(
+        selectedEmpresaFilter === 'all'
+          ? debtService.getCompanyPaymentData()
+          : debtService.getCompanyPaymentData(selectedEmpresaFilter)
+      );
     });
-  }, []);
+  }, [selectedEmpresaFilter]);
 
   const showToast = (msg: string) => {
     setToastMsg(msg);
@@ -21,6 +28,7 @@ export const DadosRecebimentoEmpresaView: React.FC = () => {
   // Modal State
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [targetEmpresaId, setTargetEmpresaId] = useState<string>('emp-matriz');
   const [type, setType] = useState<PaymentDataType>('PIX');
   const [description, setDescription] = useState('');
   const [pixKeyType, setPixKeyType] = useState<PixKeyType>('CNPJ');
@@ -32,6 +40,7 @@ export const DadosRecebimentoEmpresaView: React.FC = () => {
 
   const handleOpenAdd = () => {
     setEditingId(null);
+    setTargetEmpresaId(selectedEmpresaFilter === 'all' ? (empresas[0]?.id || 'emp-matriz') : selectedEmpresaFilter);
     setType('PIX');
     setDescription('');
     setPixKeyType('CNPJ');
@@ -45,6 +54,7 @@ export const DadosRecebimentoEmpresaView: React.FC = () => {
 
   const handleOpenEdit = (item: CompanyPaymentData) => {
     setEditingId(item.id);
+    setTargetEmpresaId(item.empresaId || 'emp-matriz');
     setType(item.type);
     setDescription(item.description);
     setPixKeyType(item.pixKeyType || 'CNPJ');
@@ -69,6 +79,7 @@ export const DadosRecebimentoEmpresaView: React.FC = () => {
 
     if (editingId) {
       debtService.updateCompanyPaymentData(editingId, {
+        empresaId: targetEmpresaId,
         type,
         description: description.trim(),
         pixKeyType: type === 'PIX' ? pixKeyType : undefined,
@@ -82,6 +93,7 @@ export const DadosRecebimentoEmpresaView: React.FC = () => {
       showToast('Dado de recebimento da empresa atualizado com sucesso!');
     } else {
       debtService.addCompanyPaymentData({
+        empresaId: targetEmpresaId,
         type,
         description: description.trim(),
         pixKeyType: type === 'PIX' ? pixKeyType : undefined,
@@ -209,9 +221,33 @@ export const DadosRecebimentoEmpresaView: React.FC = () => {
               Contas e Chaves de Recebimento ({payments.length})
             </h2>
           </div>
-          <span className="text-xs text-on-surface-variant font-data-mono">
-            Apenas 1 registro pode ser marcado como principal por vez
-          </span>
+          <div className="flex items-center gap-3">
+            <div className="flex items-center gap-1.5">
+              <span className="text-xs text-on-surface-variant font-semibold">Empresa:</span>
+              <select
+                className="h-8 px-2 bg-surface-container-lowest rounded-md text-xs font-semibold text-on-surface border border-outline-variant/30 focus:outline-none"
+                value={selectedEmpresaFilter}
+                onChange={(e) => {
+                  setSelectedEmpresaFilter(e.target.value);
+                  setPayments(
+                    e.target.value === 'all'
+                      ? debtService.getCompanyPaymentData()
+                      : debtService.getCompanyPaymentData(e.target.value)
+                  );
+                }}
+              >
+                <option value="all">Todas as Empresas</option>
+                {empresas.map((emp) => (
+                  <option key={emp.id} value={emp.id}>
+                    {emp.nomeFantasia}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <span className="text-xs text-on-surface-variant font-data-mono hidden sm:inline">
+              1 dado principal por empresa
+            </span>
+          </div>
         </div>
 
         {payments.length === 0 ? (
@@ -260,6 +296,16 @@ export const DadosRecebimentoEmpresaView: React.FC = () => {
                     <strong className="text-sm font-bold text-primary truncate max-w-[320px]">
                       {item.description}
                     </strong>
+
+                    {(() => {
+                      const emp = empresas.find((e) => e.id === item.empresaId);
+                      return emp ? (
+                        <span className="px-2 py-0.5 rounded bg-surface-container-high text-on-surface font-badge-sm text-[10px] font-semibold border border-outline-variant/30 flex items-center gap-1">
+                          <span className="material-symbols-outlined text-[12px] text-primary">domain</span>
+                          {emp.nomeFantasia}
+                        </span>
+                      ) : null;
+                    })()}
 
                     <span
                       className={`px-2 py-0.5 rounded font-badge-sm text-[10px] font-bold ${
@@ -391,6 +437,23 @@ export const DadosRecebimentoEmpresaView: React.FC = () => {
             </div>
 
             <form onSubmit={handleSave} className="p-5 space-y-4 text-xs">
+              <div>
+                <label className="block font-label-uppercase font-bold text-outline mb-1 text-[10px]">
+                  EMPRESA CREDORA *
+                </label>
+                <select
+                  className="w-full h-9 px-2 bg-surface-container-low rounded-lg text-xs font-semibold text-on-surface border border-outline-variant/30 focus:outline-none"
+                  value={targetEmpresaId}
+                  onChange={(e) => setTargetEmpresaId(e.target.value)}
+                >
+                  {empresas.map((emp) => (
+                    <option key={emp.id} value={emp.id}>
+                      {emp.nomeFantasia} ({emp.cnpj})
+                    </option>
+                  ))}
+                </select>
+              </div>
+
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block font-label-uppercase font-bold text-outline mb-1 text-[10px]">

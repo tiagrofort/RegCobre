@@ -11,6 +11,8 @@ import {
   PaymentRecord,
   AgendaDiariaCobranca,
   ResumoProducaoDia,
+  Empresa,
+  ModoCarteiraEmpresa,
 } from '../types';
 
 // Initial Mock Debtors (focused strictly on collection with phones)
@@ -391,11 +393,139 @@ const INITIAL_DEBTORS: Debtor[] = [
   },
 ];
 
+// Initial Empresas Mock
+export const INITIAL_EMPRESAS: Empresa[] = [
+  {
+    id: 'emp-matriz',
+    razaoSocial: 'RegCobre Cobranças e Recuperação de Ativos S/A',
+    nomeFantasia: 'RegCobre Matriz',
+    cnpj: '18.234.567/0001-89',
+    inscricaoEstadual: '109.876.543.110',
+    telefone: '(11) 3214-5500',
+    email: 'financeiro@regcobre.com.br',
+    cep: '01310-100',
+    endereco: 'Av. Paulista',
+    numero: '1578',
+    complemento: '14º andar',
+    bairro: 'Bela Vista',
+    cidade: 'São Paulo',
+    estado: 'SP',
+    ativo: true,
+    modoCarteira: 'COMPARTILHADA',
+  },
+  {
+    id: 'emp-sul',
+    razaoSocial: 'SulCob Soluções em Recuperação de Crédito Ltda',
+    nomeFantasia: 'SulCob Paraná',
+    cnpj: '29.876.543/0001-12',
+    inscricaoEstadual: '908.765.432.001',
+    telefone: '(41) 3045-8800',
+    email: 'cobranca@sulcob.com.br',
+    cep: '80020-010',
+    endereco: 'Rua XV de Novembro',
+    numero: '784',
+    complemento: 'Conj. 402',
+    bairro: 'Centro',
+    cidade: 'Curitiba',
+    estado: 'PR',
+    ativo: true,
+    modoCarteira: 'EXCLUSIVA',
+  },
+  {
+    id: 'emp-norte',
+    razaoSocial: 'Amazonas Gestão de Ativos e Fomento Mercantil Ltda',
+    nomeFantasia: 'Amazonas Ativos',
+    cnpj: '04.551.229/0001-70',
+    inscricaoEstadual: '04.123.456-7',
+    telefone: '(92) 3622-4411',
+    email: 'recebimentos@amazonasativos.com.br',
+    cep: '69005-010',
+    endereco: 'Av. Eduardo Ribeiro',
+    numero: '520',
+    complemento: 'Sala 101',
+    bairro: 'Centro',
+    cidade: 'Manaus',
+    estado: 'AM',
+    ativo: true,
+    modoCarteira: 'COMPARTILHADA',
+  },
+];
+
+// Initial Users Mock
+export const INITIAL_USERS: User[] = [
+  {
+    id: 'carlos-eduardo',
+    name: 'Carlos Eduardo',
+    username: 'carlos.eduardo',
+    email: 'carlos.eduardo@regcobre.corp',
+    role: 'cobrador',
+    roleTitle: 'Cobrador Sênior - Matriz',
+    unit: 'Matriz São Paulo',
+    badgeCode: 'RC-4412',
+    ativo: true,
+    empresaPrincipalId: 'emp-matriz',
+    empresasAcessoIds: ['emp-matriz', 'emp-sul'],
+  },
+  {
+    id: 'fernando-guimaraes',
+    name: 'Dr. Fernando Guimarães',
+    username: 'fernando.guimaraes',
+    email: 'fernando.guimaraes@regcobre.corp',
+    role: 'supervisor',
+    roleTitle: 'Diretor de Operações / Supervisão',
+    unit: 'Diretoria de Recuperação de Ativos',
+    badgeCode: 'DIR-001',
+    ativo: true,
+    empresaPrincipalId: 'emp-matriz',
+    empresasAcessoIds: ['emp-matriz', 'emp-sul', 'emp-norte'],
+  },
+  {
+    id: 'roberto-silveira',
+    name: 'Roberto Silveira',
+    username: 'roberto.silveira',
+    email: 'roberto.silveira@regcobre.corp',
+    role: 'cobrador',
+    roleTitle: 'Cobrador Pleno - SP',
+    unit: 'Matriz São Paulo',
+    badgeCode: 'RC-3901',
+    ativo: true,
+    empresaPrincipalId: 'emp-matriz',
+    empresasAcessoIds: ['emp-matriz'],
+  },
+  {
+    id: 'aline-moraes',
+    name: 'Aline Moraes',
+    username: 'aline.moraes',
+    email: 'aline.moraes@sulcob.com.br',
+    role: 'cobrador',
+    roleTitle: 'Cobradora Sênior - PR',
+    unit: 'Filial Curitiba',
+    badgeCode: 'SC-1022',
+    ativo: true,
+    empresaPrincipalId: 'emp-sul',
+    empresasAcessoIds: ['emp-sul'],
+  },
+  {
+    id: 'marcos-vinicius',
+    name: 'Marcos Vinicius',
+    username: 'marcos.vinicius',
+    email: 'marcos.vinicius@amazonasativos.com.br',
+    role: 'supervisor',
+    roleTitle: 'Supervisor Regional Norte',
+    unit: 'Filial Manaus',
+    badgeCode: 'AZ-0504',
+    ativo: true,
+    empresaPrincipalId: 'emp-norte',
+    empresasAcessoIds: ['emp-norte', 'emp-matriz'],
+  },
+];
+
 // Initial Debts Data
 const INITIAL_DEBTS: Debt[] = [
   // 1. Indústria Metalúrgica Andrade - Título #10002
   {
     id: '10002',
+    empresaId: 'emp-matriz',
     debtorId: 'd-andrade',
     debtorName: 'Indústria Metalúrgica Andrade Ltda',
     debtorTradeName: 'Metalúrgica Andrade',
@@ -602,6 +732,7 @@ const INITIAL_DEBTS: Debt[] = [
   // 1b. Indústria Metalúrgica Andrade - Título #10003
   {
     id: '10003',
+    empresaId: 'emp-matriz',
     debtorId: 'd-andrade',
     debtorName: 'Indústria Metalúrgica Andrade Ltda',
     debtorTradeName: 'Metalúrgica Andrade',
@@ -645,6 +776,7 @@ const INITIAL_DEBTS: Debt[] = [
   // 1c. Indústria Metalúrgica Andrade - Título #10004
   {
     id: '10004',
+    empresaId: 'emp-matriz',
     debtorId: 'd-andrade',
     debtorName: 'Indústria Metalúrgica Andrade Ltda',
     debtorTradeName: 'Metalúrgica Andrade',
@@ -675,6 +807,7 @@ const INITIAL_DEBTS: Debt[] = [
   // 2. Construtora Rocha Forte - Título #10001
   {
     id: '10001',
+    empresaId: 'emp-sul',
     debtorId: 'd-rocha-forte',
     debtorName: 'Construtora Rocha Forte Ltda',
     debtorTradeName: 'Rocha Forte Engenharia',
@@ -806,6 +939,7 @@ const INITIAL_DEBTS: Debt[] = [
   // 3. Supermercados Alvorada - Título #10045
   {
     id: '10045',
+    empresaId: 'emp-matriz',
     debtorId: 'd-alvorada',
     debtorName: 'Supermercados Alvorada Eireli',
     debtorTradeName: 'Supermercado Alvorada',
@@ -903,6 +1037,7 @@ const INITIAL_DEBTS: Debt[] = [
   // 4. Translog Brasil Ltda - Título #10482
   {
     id: '10482',
+    empresaId: 'emp-sul',
     debtorId: 'd-translog',
     debtorName: 'Translog Brasil Ltda',
     debtorTradeName: 'Translog Logística',
@@ -972,6 +1107,7 @@ const INITIAL_DEBTS: Debt[] = [
   // 5. Clínica Médica São Lucas - Título #10555
   {
     id: '10555',
+    empresaId: 'emp-sul',
     debtorId: 'd-sao-lucas',
     debtorName: 'Clínica Médica São Lucas',
     debtorTradeName: 'Clínica São Lucas',
@@ -1040,6 +1176,7 @@ const INITIAL_DEBTS: Debt[] = [
   // 6. Distribuidora Brasil Norte - Título #09871
   {
     id: '09871',
+    empresaId: 'emp-norte',
     debtorId: 'd-brasil-norte',
     debtorName: 'Distribuidora Brasil Norte PJ',
     debtorTradeName: 'Brasil Norte Distribuidora',
@@ -1108,6 +1245,7 @@ const INITIAL_DEBTS: Debt[] = [
   // 7. Transporte Vale Verde - Título #10219
   {
     id: '10219',
+    empresaId: 'emp-norte',
     debtorId: 'd-vale-verde',
     debtorName: 'Transporte Vale Verde PJ',
     debtorTradeName: 'Vale Verde Logística',
@@ -1159,6 +1297,7 @@ const INITIAL_DEBTS: Debt[] = [
   // 8. Roberto Sampaio Pinto - Título #10304
   {
     id: '10304',
+    empresaId: 'emp-norte',
     debtorId: 'd-roberto-sampaio',
     debtorName: 'Roberto Sampaio Pinto',
     debtorTradeName: 'Consultoria Empresarial',
@@ -1240,6 +1379,7 @@ const INITIAL_DEBTS: Debt[] = [
   // 9. Auto Peças Central Sul - Título #10190
   {
     id: '10190',
+    empresaId: 'emp-matriz',
     debtorId: 'd-central-sul',
     debtorName: 'Auto Peças Central Sul PJ',
     debtorTradeName: 'Central Sul Autopeças',
@@ -1301,55 +1441,88 @@ const INITIAL_DEBTS: Debt[] = [
   },
 ];
 
-// Initial Company Payment Data (Dados de Recebimento da Empresa)
+// Initial Company Payment Data (Dados de Recebimento por Empresa)
 const INITIAL_COMPANY_PAYMENT_DATA: CompanyPaymentData[] = [
+  // emp-matriz (RegCobre Matriz)
   {
     id: 'pay-emp-1',
+    empresaId: 'emp-matriz',
     type: 'PIX',
     description: 'PIX CNPJ — Conta Principal Corporativa',
     pixKeyType: 'CNPJ',
-    pixKey: '03.456.789/0001-90',
-    paymentInfo: '03.456.789/0001-90',
+    pixKey: '18.234.567/0001-89',
+    paymentInfo: '18.234.567/0001-89',
     bankName: 'Banco Itaú Unibanco (341)',
-    accountDescription: 'Agência 0450 • C/C 18234-9 • Titular: RegCobre Cobranças',
+    accountDescription: 'Agência 0450 • C/C 18234-9 • Titular: RegCobre Matriz',
     active: true,
     isPrimary: true,
   },
   {
     id: 'pay-emp-2',
+    empresaId: 'emp-matriz',
     type: 'PIX',
     description: 'PIX E-mail — Acordos e Recuperação de Crédito',
     pixKeyType: 'E-mail',
-    pixKey: 'financeiro.recebimento@regcobre.com.br',
-    paymentInfo: 'financeiro.recebimento@regcobre.com.br',
+    pixKey: 'financeiro@regcobre.com.br',
+    paymentInfo: 'financeiro@regcobre.com.br',
     bankName: 'Banco Santander (033)',
-    accountDescription: 'Agência 1209 • C/C 98124-0 • Titular: RegCobre Cobranças',
+    accountDescription: 'Agência 1209 • C/C 98124-0 • Titular: RegCobre Matriz',
     active: true,
     isPrimary: false,
   },
   {
     id: 'pay-emp-3',
+    empresaId: 'emp-matriz',
     type: 'PIX',
     description: 'PIX Aleatória — Chave de Cobrança Expressa',
     pixKeyType: 'Aleatória',
     pixKey: 'e7b93108-9842-4f1b-a567-9d7a5b3f2081',
     paymentInfo: 'e7b93108-9842-4f1b-a567-9d7a5b3f2081',
     bankName: 'Banco do Brasil (001)',
-    accountDescription: 'Agência 3410 • C/C 45012-3 • Titular: RegCobre Cobranças',
+    accountDescription: 'Agência 3410 • C/C 45012-3 • Titular: RegCobre Matriz',
     active: true,
     isPrimary: false,
   },
+  // emp-sul (SulCob Paraná)
   {
     id: 'pay-emp-4',
+    empresaId: 'emp-sul',
     type: 'PIX',
-    description: 'PIX Telefone — Central de Plantão e Quitações',
-    pixKeyType: 'Telefone',
-    pixKey: '(11) 98765-4321',
-    paymentInfo: '(11) 98765-4321',
+    description: 'PIX CNPJ — Conta Oficial SulCob Paraná',
+    pixKeyType: 'CNPJ',
+    pixKey: '29.876.543/0001-12',
+    paymentInfo: '29.876.543/0001-12',
     bankName: 'Banco Bradesco (237)',
-    accountDescription: 'Agência 2210 • C/C 78912-1 • Titular: RegCobre Cobranças',
+    accountDescription: 'Agência 2210 • C/C 78912-1 • Titular: SulCob Paraná',
+    active: true,
+    isPrimary: true,
+  },
+  {
+    id: 'pay-emp-5',
+    empresaId: 'emp-sul',
+    type: 'PIX',
+    description: 'PIX Telefone — Central de Atendimento Sul',
+    pixKeyType: 'Telefone',
+    pixKey: '(41) 98877-6655',
+    paymentInfo: '(41) 98877-6655',
+    bankName: 'Banco Bradesco (237)',
+    accountDescription: 'Agência 2210 • C/C 78912-1 • Titular: SulCob Paraná',
     active: true,
     isPrimary: false,
+  },
+  // emp-norte (Amazonas Ativos)
+  {
+    id: 'pay-emp-6',
+    empresaId: 'emp-norte',
+    type: 'PIX',
+    description: 'PIX E-mail — Amazonas Ativos Fomento',
+    pixKeyType: 'E-mail',
+    pixKey: 'recebimentos@amazonasativos.com.br',
+    paymentInfo: 'recebimentos@amazonasativos.com.br',
+    bankName: 'Banco da Amazônia (003)',
+    accountDescription: 'Agência 0012 • C/C 34567-8 • Titular: Amazonas Ativos',
+    active: true,
+    isPrimary: true,
   },
 ];
 
@@ -1357,6 +1530,8 @@ const INITIAL_COMPANY_PAYMENT_DATA: CompanyPaymentData[] = [
 let debtsState: Debt[] = JSON.parse(JSON.stringify(INITIAL_DEBTS));
 let debtorsState: Debtor[] = JSON.parse(JSON.stringify(INITIAL_DEBTORS));
 let companyPaymentDataState: CompanyPaymentData[] = JSON.parse(JSON.stringify(INITIAL_COMPANY_PAYMENT_DATA));
+let empresasState: Empresa[] = JSON.parse(JSON.stringify(INITIAL_EMPRESAS));
+let usersState: User[] = JSON.parse(JSON.stringify(INITIAL_USERS));
 
 // Current Operational Work Day Simulation
 let currentOperationalDate = '04/11/2024';
@@ -1433,7 +1608,10 @@ export const debtService = {
     return debtorsState.find((d) => d.id === id);
   },
 
-  getDebtsByDebtorId(debtorId: string): Debt[] {
+  getDebtsByDebtorId(debtorId: string, empresaId?: string): Debt[] {
+    if (empresaId) {
+      return debtsState.filter((d) => d.debtorId === debtorId && d.empresaId === empresaId);
+    }
     return debtsState.filter((d) => d.debtorId === debtorId);
   },
 
@@ -1480,23 +1658,37 @@ export const debtService = {
   },
 
   /**
-   * Retorna todos os dados de recebimento da empresa
+   * Retorna todos os dados de recebimento (opcionalmente filtrados por empresa)
    */
-  getCompanyPaymentData(): CompanyPaymentData[] {
+  getCompanyPaymentData(empresaId?: string): CompanyPaymentData[] {
+    if (empresaId) {
+      return companyPaymentDataState.filter((p) => p.empresaId === empresaId);
+    }
     return [...companyPaymentDataState];
   },
 
   /**
-   * Retorna os dados de recebimento ativos da empresa
+   * Retorna os dados de recebimento ativos (opcionalmente filtrados por empresa)
    */
-  getActiveCompanyPaymentData(): CompanyPaymentData[] {
+  getActiveCompanyPaymentData(empresaId?: string): CompanyPaymentData[] {
+    if (empresaId) {
+      return companyPaymentDataState.filter((p) => p.active && p.empresaId === empresaId);
+    }
     return companyPaymentDataState.filter((p) => p.active);
   },
 
   /**
-   * Retorna o dado de recebimento principal da empresa
+   * Retorna o dado de recebimento principal da empresa especificada (ou geral)
    */
-  getPrimaryCompanyPaymentData(): CompanyPaymentData | undefined {
+  getPrimaryCompanyPaymentData(empresaId?: string): CompanyPaymentData | undefined {
+    if (empresaId) {
+      return (
+        companyPaymentDataState.find((p) => p.empresaId === empresaId && p.isPrimary && p.active) ||
+        companyPaymentDataState.find((p) => p.empresaId === empresaId && p.isPrimary) ||
+        companyPaymentDataState.find((p) => p.empresaId === empresaId && p.active) ||
+        companyPaymentDataState.find((p) => p.empresaId === empresaId)
+      );
+    }
     return (
       companyPaymentDataState.find((p) => p.isPrimary && p.active) ||
       companyPaymentDataState.find((p) => p.isPrimary) ||
@@ -1505,19 +1697,26 @@ export const debtService = {
   },
 
   /**
-   * Adiciona um novo dado de recebimento para a empresa.
-   * Regra: No máximo um dado principal (isPrimary = true).
+   * Adiciona um novo dado de recebimento para uma empresa.
+   * Regra: No máximo um dado principal (isPrimary = true) por empresa.
    */
   addCompanyPaymentData(data: Omit<CompanyPaymentData, 'id'>): CompanyPaymentData {
+    const targetEmpresaId = data.empresaId || 'emp-matriz';
     if (data.isPrimary) {
-      companyPaymentDataState.forEach((item) => {
-        item.isPrimary = false;
-      });
-    } else if (companyPaymentDataState.length === 0) {
-      data = { ...data, isPrimary: true };
+      companyPaymentDataState
+        .filter((p) => p.empresaId === targetEmpresaId)
+        .forEach((item) => {
+          item.isPrimary = false;
+        });
+    } else {
+      const hasAnyForEmpresa = companyPaymentDataState.some((p) => p.empresaId === targetEmpresaId);
+      if (!hasAnyForEmpresa) {
+        data = { ...data, isPrimary: true };
+      }
     }
     const newRecord: CompanyPaymentData = {
       ...data,
+      empresaId: targetEmpresaId,
       id: `pay-emp-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
     };
     companyPaymentDataState.push(newRecord);
@@ -1527,17 +1726,18 @@ export const debtService = {
 
   /**
    * Atualiza um dado de recebimento da empresa.
-   * Regra: Se marcado como principal, desmarca os demais.
+   * Regra: Se marcado como principal, desmarca os demais da mesma empresa.
    */
   updateCompanyPaymentData(id: string, updates: Partial<CompanyPaymentData>): boolean {
     const item = companyPaymentDataState.find((p) => p.id === id);
     if (!item) return false;
+    const targetEmpresaId = updates.empresaId || item.empresaId;
     if (updates.isPrimary) {
-      companyPaymentDataState.forEach((p) => {
-        if (p.id !== id) {
+      companyPaymentDataState
+        .filter((p) => p.empresaId === targetEmpresaId && p.id !== id)
+        .forEach((p) => {
           p.isPrimary = false;
-        }
-      });
+        });
     }
     Object.assign(item, updates);
     notifyListeners();
@@ -1545,25 +1745,23 @@ export const debtService = {
   },
 
   /**
-   * Define um dado de recebimento como principal.
-   * Regra do dado principal:
-   * - o anterior deixa de ser principal;
-   * - o novo passa a ser principal;
-   * - garante que o novo dado principal esteja ativo.
+   * Define um dado de recebimento como principal dentro da sua empresa.
    */
   setPrimaryCompanyPaymentData(id: string): boolean {
     const target = companyPaymentDataState.find((p) => p.id === id);
     if (!target) return false;
-    companyPaymentDataState.forEach((p) => {
-      p.isPrimary = p.id === id;
-    });
+    companyPaymentDataState
+      .filter((p) => p.empresaId === target.empresaId)
+      .forEach((p) => {
+        p.isPrimary = p.id === id;
+      });
     target.active = true;
     notifyListeners();
     return true;
   },
 
   /**
-   * Alterna o status ativo/inativo do dado de recebimento da empresa.
+   * Alterna o status ativo/inativo do dado de recebimento.
    */
   toggleCompanyPaymentDataStatus(id: string): boolean {
     const item = companyPaymentDataState.find((p) => p.id === id);
@@ -1579,13 +1777,167 @@ export const debtService = {
   deleteCompanyPaymentData(id: string): boolean {
     const index = companyPaymentDataState.findIndex((p) => p.id === id);
     if (index === -1) return false;
+    const targetEmpresaId = companyPaymentDataState[index].empresaId;
     const wasPrimary = companyPaymentDataState[index].isPrimary;
     companyPaymentDataState.splice(index, 1);
-    if (wasPrimary && companyPaymentDataState.length > 0) {
-      companyPaymentDataState[0].isPrimary = true;
+    if (wasPrimary) {
+      const remainingForEmpresa = companyPaymentDataState.filter((p) => p.empresaId === targetEmpresaId);
+      if (remainingForEmpresa.length > 0) {
+        remainingForEmpresa[0].isPrimary = true;
+      }
     }
     notifyListeners();
     return true;
+  },
+
+  // =========================================================================
+  // CRUD DE EMPRESAS
+  // =========================================================================
+  getAllEmpresas(): Empresa[] {
+    return [...empresasState];
+  },
+
+  getActiveEmpresas(): Empresa[] {
+    return empresasState.filter((e) => e.ativo);
+  },
+
+  getEmpresaById(id: string): Empresa | undefined {
+    return empresasState.find((e) => e.id === id);
+  },
+
+  getEmpresasForUser(user?: User | null): Empresa[] {
+    if (!user) return this.getActiveEmpresas();
+    return empresasState.filter((e) => e.ativo && user.empresasAcessoIds?.includes(e.id));
+  },
+
+  addEmpresa(data: Omit<Empresa, 'id'>): Empresa {
+    const newEmpresa: Empresa = {
+      ...data,
+      id: `emp-${Date.now().toString(36)}-${Math.random().toString(36).substring(2, 6)}`,
+    };
+    empresasState.push(newEmpresa);
+    notifyListeners();
+    return newEmpresa;
+  },
+
+  updateEmpresa(id: string, updates: Partial<Empresa>): boolean {
+    const item = empresasState.find((e) => e.id === id);
+    if (!item) return false;
+    Object.assign(item, updates);
+    notifyListeners();
+    return true;
+  },
+
+  toggleEmpresaStatus(id: string): boolean {
+    const item = empresasState.find((e) => e.id === id);
+    if (!item) return false;
+    item.ativo = !item.ativo;
+    notifyListeners();
+    return true;
+  },
+
+  deleteEmpresa(id: string): { success: boolean; message?: string } {
+    const hasDebts = debtsState.some((d) => d.empresaId === id);
+    const hasUsers = usersState.some((u) => u.empresaPrincipalId === id);
+    if (hasDebts || hasUsers) {
+      return {
+        success: false,
+        message: 'Não é possível excluir esta empresa pois existem cobranças ou usuários vinculados a ela. Você pode desativá-la.',
+      };
+    }
+    const idx = empresasState.findIndex((e) => e.id === id);
+    if (idx === -1) return { success: false, message: 'Empresa não encontrada.' };
+    empresasState.splice(idx, 1);
+    companyPaymentDataState = companyPaymentDataState.filter((p) => p.empresaId !== id);
+    notifyListeners();
+    return { success: true };
+  },
+
+  // =========================================================================
+  // CRUD DE USUÁRIOS
+  // =========================================================================
+  getAllUsers(): User[] {
+    return [...usersState];
+  },
+
+  getActiveUsers(): User[] {
+    return usersState.filter((u) => u.ativo);
+  },
+
+  getUserById(id: string): User | undefined {
+    return usersState.find((u) => u.id === id);
+  },
+
+  addUser(data: Omit<User, 'id'>): User {
+    // Garante que empresaPrincipalId faça parte dos acessos
+    const accessIds = Array.from(new Set([data.empresaPrincipalId, ...(data.empresasAcessoIds || [])]));
+    const newUser: User = {
+      ...data,
+      empresasAcessoIds: accessIds,
+      id: `usr-${Date.now().toString(36)}-${Math.random().toString(36).substring(2, 6)}`,
+    };
+    usersState.push(newUser);
+    notifyListeners();
+    return newUser;
+  },
+
+  updateUser(id: string, updates: Partial<User>): boolean {
+    const item = usersState.find((u) => u.id === id);
+    if (!item) return false;
+    if (updates.empresaPrincipalId) {
+      const access = updates.empresasAcessoIds || item.empresasAcessoIds;
+      if (!access.includes(updates.empresaPrincipalId)) {
+        updates.empresasAcessoIds = [...access, updates.empresaPrincipalId];
+      }
+    }
+    Object.assign(item, updates);
+    notifyListeners();
+    return true;
+  },
+
+  toggleUserStatus(id: string): boolean {
+    const item = usersState.find((u) => u.id === id);
+    if (!item) return false;
+    item.ativo = !item.ativo;
+    notifyListeners();
+    return true;
+  },
+
+  deleteUser(id: string): { success: boolean; message?: string } {
+    const hasAssigned = debtsState.some((d) => d.assignedTo.id === id);
+    if (hasAssigned) {
+      return {
+        success: false,
+        message: 'Não é possível excluir este usuário pois ele possui cobranças sob sua custódia. Você pode desativá-lo.',
+      };
+    }
+    const idx = usersState.findIndex((u) => u.id === id);
+    if (idx === -1) return { success: false, message: 'Usuário não encontrado.' };
+    usersState.splice(idx, 1);
+    notifyListeners();
+    return { success: true };
+  },
+
+  // =========================================================================
+  // CONTROLE DE ACESSO & FILTRAGEM MULTIEMPRESA
+  // =========================================================================
+  canUserAccessEmpresa(user: User, empresaId: string): boolean {
+    return user.empresasAcessoIds?.includes(empresaId) ?? false;
+  },
+
+  canUserAccessDebt(user: User, debt: Debt): boolean {
+    return user.empresasAcessoIds?.includes(debt.empresaId) ?? false;
+  },
+
+  getDebtsForUser(user: User | null, empresaFilter?: string | 'all'): Debt[] {
+    let list = debtsState;
+    if (user && user.role !== 'administrador') {
+      list = list.filter((d) => user.empresasAcessoIds?.includes(d.empresaId));
+    }
+    if (empresaFilter && empresaFilter !== 'all') {
+      list = list.filter((d) => d.empresaId === empresaFilter);
+    }
+    return list;
   },
 
   /**

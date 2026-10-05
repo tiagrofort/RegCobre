@@ -3,11 +3,15 @@ export type UserRole = 'cobrador' | 'supervisor' | 'administrador';
 export interface User {
   id: string;
   name: string;
+  username: string;
   email: string;
   role: UserRole;
   roleTitle: string;
   unit: string;
   badgeCode: string;
+  ativo: boolean;
+  empresaPrincipalId: string;
+  empresasAcessoIds: string[];
 }
 
 export type DebtStatus =
@@ -55,11 +59,12 @@ export interface DebtorPhone {
   active: boolean;
 }
 
-export type PaymentDataType = 'PIX' | 'Outro';
+export type PaymentDataType = 'PIX' | 'Boleto' | 'TED' | 'Outro';
 export type PixKeyType = 'CPF' | 'CNPJ' | 'E-mail' | 'Telefone' | 'Aleatória' | 'Outro';
 
 export interface CompanyPaymentData {
   id: string;
+  empresaId: string;
   type: PaymentDataType;
   description: string;
   pixKeyType?: PixKeyType;
@@ -69,6 +74,28 @@ export interface CompanyPaymentData {
   accountDescription?: string;
   active: boolean;
   isPrimary: boolean;
+}
+
+export type ModoCarteiraEmpresa = 'COMPARTILHADA' | 'EXCLUSIVA';
+
+export interface Empresa {
+  id: string;
+  razaoSocial: string;
+  nomeFantasia: string;
+  cnpj: string;
+  inscricaoEstadual?: string;
+  telefone?: string;
+  email?: string;
+  cep?: string;
+  endereco?: string;
+  numero?: string;
+  complemento?: string;
+  bairro?: string;
+  cidade?: string;
+  estado?: string;
+  ativo: boolean;
+  modoCarteira: ModoCarteiraEmpresa;
+  dadosRecebimento?: CompanyPaymentData[];
 }
 
 export interface Debtor {
@@ -191,6 +218,7 @@ export interface VendaCobranca {
 
 export interface Debt {
   id: string;
+  empresaId: string;
   debtorId: string;
   debtorName: string;
   debtorTradeName?: string;
