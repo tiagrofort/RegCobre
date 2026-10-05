@@ -128,20 +128,28 @@ export const FichaCobrancaView: React.FC<FichaCobrancaViewProps> = ({
   const activePhones = debtorPhones.filter((p) => p.active);
   const primaryPhone = activePhones[0] || null;
 
-  // Dados de recebimento oficiais da EMPRESA para pagamento da cobrança
-  const companyPayments: CompanyPaymentData[] = debtService.getCompanyPaymentData();
+  // Empresa Credora responsável pela cobrança
+  const debtEmpresa = debtService.getEmpresaById(debt.empresaId);
+
+  // Dados de recebimento oficiais EXCLUSIVOS da EMPRESA desta cobrança
+  const companyPayments: CompanyPaymentData[] = debtService.getCompanyPaymentData(debt.empresaId);
   const activeCompanyPayments = companyPayments.filter((p) => p.active);
-  const primaryCompanyPayment = debtService.getPrimaryCompanyPaymentData() || activeCompanyPayments[0] || null;
+  const [selectedPaymentId, setSelectedPaymentId] = useState<string | null>(null);
+  const primaryCompanyPayment =
+    (selectedPaymentId ? activeCompanyPayments.find((p) => p.id === selectedPaymentId) : null) ||
+    debtService.getPrimaryCompanyPaymentData(debt.empresaId) ||
+    activeCompanyPayments[0] ||
+    null;
 
   const handleCopyPaymentInfo = (payment?: CompanyPaymentData) => {
     const target = payment || primaryCompanyPayment;
     if (!target) {
-      showToast('Nenhum dado de recebimento da empresa cadastrado.');
+      showToast('Nenhum dado de recebimento cadastrado para a empresa desta cobrança.');
       return;
     }
     const textToCopy = target.pixKey || target.paymentInfo || '';
     navigator.clipboard?.writeText(textToCopy);
-    showToast(`Dado de recebimento copiado: ${textToCopy} (${target.description})`);
+    showToast(`Dado de recebimento copiado (${target.type}): ${textToCopy} - ${target.description}`);
     setIsPaymentDropdownOpen(false);
   };
 
@@ -512,20 +520,27 @@ export const FichaCobrancaView: React.FC<FichaCobrancaViewProps> = ({
               {/* Dropdown de Dados de Recebimento da Empresa */}
               {isPaymentDropdownOpen && activeCompanyPayments.length > 0 && (
                 <div className="absolute left-0 top-10 w-88 bg-surface-container-lowest rounded-xl shadow-xl border border-outline-variant/30 p-2 z-50 animate-fade-in flex flex-col gap-1">
-                  <div className="px-2 py-1 text-[10px] font-label-uppercase font-bold text-outline border-b border-outline-variant/20 flex items-center justify-between">
-                    <span>Dados de Recebimento da Empresa ({activeCompanyPayments.length} ativos)</span>
-                    <span className="text-[10px] text-secondary font-semibold">Clique para copiar</span>
+                  <div className="px-2 py-1.5 text-[10px] font-label-uppercase font-bold text-outline border-b border-outline-variant/20 flex items-center justify-between">
+                    <span>
+                      {debtEmpresa?.nomeFantasia || 'Empresa'} • {activeCompanyPayments.length} forma(s)
+                    </span>
+                    <span className="text-[10px] text-secondary font-semibold">Clique para selecionar / copiar</span>
                   </div>
                   {activeCompanyPayments.map((p) => (
                     <div
                       key={p.id}
-                      className="p-2 rounded-lg hover:bg-surface-container flex items-center justify-between text-left transition-colors group"
+                      className={`p-2 rounded-lg hover:bg-surface-container flex items-center justify-between text-left transition-colors group ${
+                        primaryCompanyPayment?.id === p.id ? 'bg-surface-container-low border border-primary/20' : ''
+                      }`}
                     >
                       <button
                         type="button"
-                        onClick={() => handleCopyPaymentInfo(p)}
+                        onClick={() => {
+                          setSelectedPaymentId(p.id);
+                          handleCopyPaymentInfo(p);
+                        }}
                         className="flex flex-col min-w-0 pr-2 flex-1 text-left cursor-pointer"
-                        title="Copiar este dado de recebimento"
+                        title="Selecionar e copiar este dado de recebimento"
                       >
                         <div className="flex items-center gap-1.5 flex-wrap">
                           <span className="px-1.5 py-0.2 rounded bg-secondary-container text-on-secondary-container text-[9px] font-bold uppercase">
@@ -533,10 +548,15 @@ export const FichaCobrancaView: React.FC<FichaCobrancaViewProps> = ({
                           </span>
                           {p.isPrimary && (
                             <span className="px-1 py-0.2 rounded bg-primary-fixed text-on-primary-fixed text-[8px] font-bold uppercase">
-                              Principal
+                              Padrão
                             </span>
                           )}
-                          <span className="text-xs font-semibold text-primary truncate max-w-[150px]">
+                          {primaryCompanyPayment?.id === p.id && (
+                            <span className="px-1 py-0.2 rounded bg-emerald-100 text-emerald-800 text-[8px] font-bold uppercase">
+                              ✓ Selecionada
+                            </span>
+                          )}
+                          <span className="text-xs font-semibold text-primary truncate max-w-[140px]">
                             {p.description}
                           </span>
                         </div>
@@ -550,6 +570,22 @@ export const FichaCobrancaView: React.FC<FichaCobrancaViewProps> = ({
                         )}
                       </button>
                       <div className="flex items-center gap-1 shrink-0">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setSelectedPaymentId(p.id);
+                            showToast(`Forma de recebimento selecionada: ${p.description}`);
+                            setIsPaymentDropdownOpen(false);
+                          }}
+                          className={`px-1.5 py-0.5 rounded text-[10px] font-semibold transition-colors cursor-pointer ${
+                            primaryCompanyPayment?.id === p.id
+                              ? 'bg-primary text-surface'
+                              : 'bg-surface-container-high hover:bg-primary/20 text-primary'
+                          }`}
+                          title="Selecionar esta forma para repasse"
+                        >
+                          {primaryCompanyPayment?.id === p.id ? 'Ativa' : 'Selecionar'}
+                        </button>
                         <button
                           type="button"
                           onClick={() => handleUsePaymentInNotes(p)}
@@ -627,6 +663,35 @@ export const FichaCobrancaView: React.FC<FichaCobrancaViewProps> = ({
                     {debt.debtorType === 'PJ' ? 'CNPJ' : 'CPF'}: <strong>{debt.debtorCnpjCpf}</strong>
                   </span>
                 </>
+              )}
+            </div>
+
+            {/* EMPRESA RESPONSÁVEL PELA COBRANÇA */}
+            <div className="flex items-center gap-2 mt-1 flex-wrap">
+              <span className="material-symbols-outlined text-[18px] text-primary">domain</span>
+              <span className="font-label-uppercase text-xs font-bold text-primary tracking-wider uppercase">
+                {debtEmpresa ? debtEmpresa.razaoSocial || debtEmpresa.nomeFantasia : 'RegCobre Cobranças'}
+              </span>
+              {debtEmpresa?.cnpj && (
+                <span className="text-[11px] text-on-surface-variant font-data-mono">
+                  • CNPJ: {debtEmpresa.cnpj}
+                </span>
+              )}
+              {debtEmpresa?.modoCarteira && (
+                <span
+                  className={`px-1.5 py-0.5 rounded font-badge-sm text-[9px] font-bold uppercase ${
+                    debtEmpresa.modoCarteira === 'COMPARTILHADA'
+                      ? 'bg-sky-100 text-sky-800 border border-sky-200'
+                      : 'bg-purple-100 text-purple-800 border border-purple-200'
+                  }`}
+                  title={
+                    debtEmpresa.modoCarteira === 'COMPARTILHADA'
+                      ? 'Cobranças compartilhadas entre operadores com acesso'
+                      : 'Cobranças exclusivas para usuários desta empresa'
+                  }
+                >
+                  {debtEmpresa.modoCarteira}
+                </span>
               )}
             </div>
 

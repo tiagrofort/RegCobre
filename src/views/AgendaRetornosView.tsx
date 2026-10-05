@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useAuth } from '../context/AuthContext';
 import { debtService } from '../services/debtService';
 import { Debt } from '../types';
 
@@ -11,7 +12,8 @@ export const AgendaRetornosView: React.FC<AgendaRetornosViewProps> = ({
   onSelectDebt,
   onOpenFastLog,
 }) => {
-  const debts = debtService.getAllDebts();
+  const { currentUser } = useAuth();
+  const debts = debtService.getDebtsForUser(currentUser);
   const [filterDate, setFilterDate] = useState<'hoje' | 'semana' | 'todos'>('hoje');
   const [toastMsg, setToastMsg] = useState<string | null>(null);
 

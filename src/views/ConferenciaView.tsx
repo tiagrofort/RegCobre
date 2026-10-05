@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useAuth } from '../context/AuthContext';
 import { debtService } from '../services/debtService';
 import { Debt } from '../types';
 import { PdfPreviewModal } from '../components/PdfPreviewModal';
@@ -9,6 +10,7 @@ interface ConferenciaViewProps {
 }
 
 export const ConferenciaView: React.FC<ConferenciaViewProps> = ({ onSelectDebt }) => {
+  const { currentUser } = useAuth();
   const [operatorFilter, setOperatorFilter] = useState('Todos os Cobradores');
   const [statusFilter, setStatusFilter] = useState('Todos os Status');
   const [channelFilter, setChannelFilter] = useState('Todos os Canais');
@@ -22,14 +24,17 @@ export const ConferenciaView: React.FC<ConferenciaViewProps> = ({ onSelectDebt }
     setTimeout(() => setToastMsg(null), 3000);
   };
 
-  const filteredDebts = debtService.getAuditedRecords({
-    operator: operatorFilter,
-    status: statusFilter,
-    channel: channelFilter,
-    search: searchQuery,
-  });
+  const filteredDebts = debtService.getAuditedRecords(
+    {
+      operator: operatorFilter,
+      status: statusFilter,
+      channel: channelFilter,
+      search: searchQuery,
+    },
+    currentUser
+  );
 
-  const metrics = debtService.getSummaryMetrics();
+  const metrics = debtService.getSummaryMetrics(currentUser);
 
   const handleResetFilters = () => {
     setOperatorFilter('Todos os Cobradores');

@@ -18,7 +18,7 @@ export const DashboardCobradorView: React.FC<DashboardCobradorViewProps> = ({
 }) => {
   const { currentUser } = useAuth();
   const producao = debtService.getProducaoDoDia();
-  const agenda = debtService.getAgendaDoDia();
+  const agenda = debtService.getAgendaDoDia(currentUser);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
   const showToast = (msg: string) => {
@@ -27,7 +27,7 @@ export const DashboardCobradorView: React.FC<DashboardCobradorViewProps> = ({
   };
 
   const handleStartQueue = () => {
-    const proxima = debtService.getProximaCobrancaPendente();
+    const proxima = debtService.getProximaCobrancaPendente(undefined, currentUser);
     if (proxima) {
       showToast(`Iniciando trabalho de hoje: Abrindo cobrança ${proxima.titleNumber} (${proxima.debtorName})...`);
       setTimeout(() => {

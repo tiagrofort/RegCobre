@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useAuth } from '../context/AuthContext';
 import { debtService } from '../services/debtService';
 import { Debt } from '../types';
 
@@ -11,8 +12,9 @@ export const DashboardGerencialView: React.FC<DashboardGerencialViewProps> = ({
   onSelectDebt,
   onNavigateToConferencia,
 }) => {
-  const metrics = debtService.getSummaryMetrics();
-  const debts = debtService.getAllDebts();
+  const { currentUser } = useAuth();
+  const metrics = debtService.getSummaryMetrics(currentUser);
+  const debts = debtService.getDebtsForUser(currentUser);
   const [selectedPeriod, setSelectedPeriod] = useState<'mes' | 'trimestre' | 'ano'>('mes');
 
   // Performance by Cobrador

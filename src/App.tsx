@@ -14,7 +14,8 @@ import { DashboardGerencialView } from './views/DashboardGerencialView';
 import { AgendaRetornosView } from './views/AgendaRetornosView';
 import { RelatorioDiarioView } from './views/RelatorioDiarioView';
 import { ImportarErpView } from './views/ImportarErpView';
-import { DadosRecebimentoEmpresaView } from './views/DadosRecebimentoEmpresaView';
+import { EmpresasView } from './views/EmpresasView';
+import { UsuariosView } from './views/UsuariosView';
 import { debtService } from './services/debtService';
 import { Debt } from './types';
 
@@ -251,8 +252,16 @@ const MainAppContent: React.FC = () => {
             />
           )}
 
+          {currentScreen === 'empresas' && (
+            <EmpresasView />
+          )}
+
+          {currentScreen === 'usuarios' && (
+            <UsuariosView />
+          )}
+
           {currentScreen === 'dados-recebimento-empresa' && (
-            <DadosRecebimentoEmpresaView />
+            <EmpresasView />
           )}
         </main>
       </div>

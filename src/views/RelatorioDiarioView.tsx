@@ -15,8 +15,8 @@ export const RelatorioDiarioView: React.FC<RelatorioDiarioViewProps> = ({
 }) => {
   const { currentUser } = useAuth();
   const producao = debtService.getProducaoDoDia();
-  const agenda = debtService.getAgendaDoDia();
-  const debts = debtService.getAllDebts();
+  const agenda = debtService.getAgendaDoDia(currentUser);
+  const debts = debtService.getDebtsForUser(currentUser);
 
   // Tab & Filters
   const [activeTab, setActiveTab] = useState<'trabalhadas' | 'pendentes' | 'todas'>('trabalhadas');

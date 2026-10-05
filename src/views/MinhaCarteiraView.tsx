@@ -14,11 +14,13 @@ export const MinhaCarteiraView: React.FC<MinhaCarteiraViewProps> = ({
   onOpenFastLogModal,
 }) => {
   const { currentUser } = useAuth();
-  const allDebts = debtService.getAllDebts();
+  const allDebts = debtService.getDebtsForUser(currentUser);
+  const userEmpresas = debtService.getEmpresasForUser(currentUser);
 
   // Active Selected Debt for Consultation Drawer
   const [selectedDebtId, setSelectedDebtId] = useState<string>(allDebts[0]?.id || '10002');
   const [filterQuery, setFilterQuery] = useState('');
+  const [empresaFilter, setEmpresaFilter] = useState<string>('all');
   const [activeFilterPill, setActiveFilterPill] = useState<
     'all' | 'delayed60' | 'promise' | 'return_today' | 'no_contact' | 'worked_today'
   >('all');
@@ -33,8 +35,12 @@ export const MinhaCarteiraView: React.FC<MinhaCarteiraViewProps> = ({
     setTimeout(() => setToastMsg(null), 3000);
   };
 
-  // Filter debts based on pill & query
+  // Filter debts based on pill & query & empresa
   const filteredDebts = allDebts.filter((d) => {
+    if (empresaFilter !== 'all' && d.empresaId !== empresaFilter) {
+      return false;
+    }
+
     if (filterQuery.trim()) {
       const q = filterQuery.toLowerCase();
       const match =
@@ -140,6 +146,26 @@ export const MinhaCarteiraView: React.FC<MinhaCarteiraViewProps> = ({
               onChange={(e) => setFilterQuery(e.target.value)}
             />
           </div>
+
+          {/* Filtro por Empresa (quando operador tem acesso a mais de 1) */}
+          {userEmpresas.length > 1 && (
+            <div className="flex items-center gap-1.5 shrink-0">
+              <span className="material-symbols-outlined text-[16px] text-primary">domain</span>
+              <select
+                className="h-8 px-2 bg-surface-container-low rounded-lg text-xs font-semibold text-on-surface border border-outline-variant/30 focus:outline-none cursor-pointer"
+                value={empresaFilter}
+                onChange={(e) => setEmpresaFilter(e.target.value)}
+                title="Filtrar cobranças por empresa autorizada"
+              >
+                <option value="all">Todas as Empresas ({userEmpresas.length})</option>
+                {userEmpresas.map((emp) => (
+                  <option key={emp.id} value={emp.id}>
+                    {emp.nomeFantasia} ({emp.modoCarteira})
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
 
           {/* Quick Triage Filter Pills */}
           <div className="flex items-center gap-space-xs overflow-x-auto pb-1 xl:pb-0 scrollbar-none">
@@ -288,6 +314,18 @@ export const MinhaCarteiraView: React.FC<MinhaCarteiraViewProps> = ({
                           <span className="font-data-mono text-[11px] text-on-surface-variant">
                             CNPJ: {d.debtorCnpjCpf} • ERP {d.erpCode}
                           </span>
+                          {(() => {
+                            const emp = debtService.getEmpresaById(d.empresaId);
+                            return emp ? (
+                              <span className="text-[10px] text-primary/80 font-medium flex items-center gap-1 mt-0.5">
+                                <span className="material-symbols-outlined text-[12px] text-primary">domain</span>
+                                <span>{emp.nomeFantasia}</span>
+                                <span className="text-[9px] px-1 py-0.2 rounded bg-surface-container text-on-surface-variant font-bold uppercase">
+                                  {emp.modoCarteira}
+                                </span>
+                              </span>
+                            ) : null;
+                          })()}
                         </div>
                       </td>
 

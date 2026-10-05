@@ -12,6 +12,8 @@ export type NavScreen =
   | 'conferencia-de-cobrancas'
   | 'dashboard-gerencial'
   | 'importar-erp'
+  | 'empresas'
+  | 'usuarios'
   | 'dados-recebimento-empresa';
 
 interface SidebarProps {
@@ -503,31 +505,31 @@ export const Sidebar: React.FC<SidebarProps> = ({
           </nav>
         </div>
 
-        {/* Section: CONFIGURAÇÕES */}
+        {/* Section: CADASTROS */}
         <div className={isCollapsed ? 'px-2 py-space-xs border-t border-primary/40' : 'px-space-md py-space-xs border-t border-primary/40'}>
           {!isCollapsed ? (
             <div className="px-space-sm py-space-xs font-label-uppercase text-label-uppercase text-on-primary-container uppercase tracking-wider">
-              Configurações
+              Cadastros
             </div>
           ) : (
             <div className="w-8 h-px bg-primary/40 mx-auto my-1" />
           )}
 
           <nav className="flex flex-col gap-space-2xs mt-space-2xs">
-            {/* Dados de Recebimento */}
+            {/* Empresas */}
             <button
-              onClick={() => onNavigate('dados-recebimento-empresa')}
-              aria-label="Dados de Recebimento da Empresa"
-              title={isCollapsed ? 'Dados de Recebimento da Empresa' : undefined}
+              onClick={() => onNavigate('empresas')}
+              aria-label="Empresas"
+              title={isCollapsed ? 'Empresas' : undefined}
               className={`rounded-lg transition-colors cursor-pointer group relative ${
                 isCollapsed
                   ? `w-12 h-11 mx-auto flex items-center justify-center ${
-                      currentScreen === 'dados-recebimento-empresa'
+                      currentScreen === 'empresas'
                         ? 'bg-primary text-surface font-semibold shadow-xs'
                         : 'text-on-primary-container hover:bg-primary hover:text-surface'
                     }`
                   : `flex items-center gap-space-sm px-space-sm py-space-xs font-body-md text-body-md text-left w-full ${
-                      currentScreen === 'dados-recebimento-empresa'
+                      currentScreen === 'empresas'
                         ? 'bg-primary text-surface font-semibold shadow-xs'
                         : 'text-on-primary-container hover:bg-primary hover:text-surface'
                     }`
@@ -535,15 +537,49 @@ export const Sidebar: React.FC<SidebarProps> = ({
             >
               {isCollapsed ? (
                 <>
-                  <span className="material-symbols-outlined text-[20px]">account_balance</span>
+                  <span className="material-symbols-outlined text-[20px]">domain</span>
                   <div className="absolute left-full ml-3 px-3 py-1.5 bg-primary text-surface text-xs font-medium rounded-lg shadow-xl opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity whitespace-nowrap z-50 border border-primary/40">
-                    <span>Dados de Recebimento</span>
+                    <span>Empresas</span>
                   </div>
                 </>
               ) : (
                 <>
-                  <span className="material-symbols-outlined text-[18px]">account_balance</span>
-                  <span>Dados de Recebimento</span>
+                  <span className="material-symbols-outlined text-[18px]">domain</span>
+                  <span>Empresas</span>
+                </>
+              )}
+            </button>
+
+            {/* Usuários */}
+            <button
+              onClick={() => onNavigate('usuarios')}
+              aria-label="Usuários"
+              title={isCollapsed ? 'Usuários' : undefined}
+              className={`rounded-lg transition-colors cursor-pointer group relative ${
+                isCollapsed
+                  ? `w-12 h-11 mx-auto flex items-center justify-center ${
+                      currentScreen === 'usuarios'
+                        ? 'bg-primary text-surface font-semibold shadow-xs'
+                        : 'text-on-primary-container hover:bg-primary hover:text-surface'
+                    }`
+                  : `flex items-center gap-space-sm px-space-sm py-space-xs font-body-md text-body-md text-left w-full ${
+                      currentScreen === 'usuarios'
+                        ? 'bg-primary text-surface font-semibold shadow-xs'
+                        : 'text-on-primary-container hover:bg-primary hover:text-surface'
+                    }`
+              }`}
+            >
+              {isCollapsed ? (
+                <>
+                  <span className="material-symbols-outlined text-[20px]">manage_accounts</span>
+                  <div className="absolute left-full ml-3 px-3 py-1.5 bg-primary text-surface text-xs font-medium rounded-lg shadow-xl opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity whitespace-nowrap z-50 border border-primary/40">
+                    <span>Usuários</span>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <span className="material-symbols-outlined text-[18px]">manage_accounts</span>
+                  <span>Usuários</span>
                 </>
               )}
             </button>

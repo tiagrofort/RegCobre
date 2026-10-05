@@ -1,31 +1,28 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { debtService } from '../services/debtService';
 import { Empresa, ModoCarteiraEmpresa, CompanyPaymentData, PaymentDataType, PixKeyType } from '../types';
 
 export const EmpresasView: React.FC = () => {
   const [empresas, setEmpresas] = useState<Empresa[]>(debtService.getAllEmpresas());
+  const [toastMsg, setToastMsg] = useState<string | null>(null);
+
+  // View state: 'list' (grid) or 'form' (ficha individual da empresa)
+  const [viewMode, setViewMode] = useState<'list' | 'form'>('list');
+
+  // List filters & controls
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'inactive'>('all');
   const [modoFilter, setModoFilter] = useState<'all' | ModoCarteiraEmpresa>('all');
-  const [toastMsg, setToastMsg] = useState<string | null>(null);
+  const [sortBy, setSortBy] = useState<'nome' | 'razao' | 'cidade' | 'cobrancas'>('nome');
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
 
-  // Subscribe to service changes
-  useEffect(() => {
-    return debtService.subscribe(() => {
-      setEmpresas(debtService.getAllEmpresas());
-    });
-  }, []);
-
-  const showToast = (msg: string) => {
-    setToastMsg(msg);
-    setTimeout(() => setToastMsg(null), 3500);
-  };
-
-  // Empresa Form Modal State
-  const [isEmpresaModalOpen, setIsEmpresaModalOpen] = useState(false);
+  // Form state
   const [editingEmpresaId, setEditingEmpresaId] = useState<string | null>(null);
+  const [tempEmpresaId, setTempEmpresaId] = useState<string>('');
 
-  // Form Fields
+  // Form Fields - DADOS DA EMPRESA
   const [razaoSocial, setRazaoSocial] = useState('');
   const [nomeFantasia, setNomeFantasia] = useState('');
   const [cnpj, setCnpj] = useState('');
@@ -40,24 +37,43 @@ export const EmpresasView: React.FC = () => {
   const [cidade, setCidade] = useState('');
   const [estado, setEstado] = useState('SP');
   const [ativo, setAtivo] = useState(true);
+
+  // Form Fields - CONFIGURAÇÃO DAS COBRANÇAS
   const [modoCarteira, setModoCarteira] = useState<ModoCarteiraEmpresa>('COMPARTILHADA');
 
-  // Dados de Recebimento Modal State for specific Empresa
-  const [managingPaymentsEmpresa, setManagingPaymentsEmpresa] = useState<Empresa | null>(null);
+  // Sub-CRUD Modal State - FORMAS DE PAGAMENTO / RECEBIMENTO
   const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
   const [editingPaymentId, setEditingPaymentId] = useState<string | null>(null);
   const [paymentType, setPaymentType] = useState<PaymentDataType>('PIX');
-  const [paymentDescription, setPaymentDescription] = useState('');
   const [pixKeyType, setPixKeyType] = useState<PixKeyType>('CNPJ');
   const [pixKey, setPixKey] = useState('');
+  const [paymentDescription, setPaymentDescription] = useState('');
   const [bankName, setBankName] = useState('');
   const [accountDescription, setAccountDescription] = useState('');
   const [paymentActive, setPaymentActive] = useState(true);
   const [isPrimaryPayment, setIsPrimaryPayment] = useState(false);
 
-  // Open Add Empresa Modal
-  const handleOpenAddEmpresa = () => {
+  // Subscribe to service updates
+  useEffect(() => {
+    return debtService.subscribe(() => {
+      setEmpresas(debtService.getAllEmpresas());
+    });
+  }, []);
+
+  const showToast = (msg: string) => {
+    setToastMsg(msg);
+    setTimeout(() => setToastMsg(null), 3500);
+  };
+
+  // The active company ID being edited or drafted
+  const activeEmpresaId = editingEmpresaId || tempEmpresaId;
+  const currentPayments = debtService.getCompanyPaymentData(activeEmpresaId);
+
+  // Open Nova Empresa (Ficha limpa)
+  const handleOpenNovaEmpresa = () => {
+    const newId = `emp-${Date.now().toString(36)}-${Math.random().toString(36).substring(2, 6)}`;
     setEditingEmpresaId(null);
+    setTempEmpresaId(newId);
     setRazaoSocial('');
     setNomeFantasia('');
     setCnpj('');
@@ -73,12 +89,14 @@ export const EmpresasView: React.FC = () => {
     setEstado('SP');
     setAtivo(true);
     setModoCarteira('COMPARTILHADA');
-    setIsEmpresaModalOpen(true);
+    setViewMode('form');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  // Open Edit Empresa Modal
+  // Open Editar Empresa (Ficha preenchida)
   const handleOpenEditEmpresa = (emp: Empresa) => {
     setEditingEmpresaId(emp.id);
+    setTempEmpresaId(emp.id);
     setRazaoSocial(emp.razaoSocial);
     setNomeFantasia(emp.nomeFantasia);
     setCnpj(emp.cnpj);
@@ -94,10 +112,11 @@ export const EmpresasView: React.FC = () => {
     setEstado(emp.estado || 'SP');
     setAtivo(emp.ativo);
     setModoCarteira(emp.modoCarteira || 'COMPARTILHADA');
-    setIsEmpresaModalOpen(true);
+    setViewMode('form');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  // Save Empresa
+  // Save Empresa Ficha
   const handleSaveEmpresa = (e: React.FormEvent) => {
     e.preventDefault();
     if (!razaoSocial.trim()) {
@@ -105,11 +124,11 @@ export const EmpresasView: React.FC = () => {
       return;
     }
     if (!nomeFantasia.trim()) {
-      showToast('Por favor, informe o Nome Fantasia.');
+      showToast('Por favor, informe o Nome Fantasia da empresa.');
       return;
     }
     if (!cnpj.trim()) {
-      showToast('Por favor, informe o CNPJ.');
+      showToast('Por favor, informe o CNPJ da empresa.');
       return;
     }
 
@@ -131,95 +150,96 @@ export const EmpresasView: React.FC = () => {
         ativo,
         modoCarteira,
       });
-      showToast('Empresa atualizada com sucesso!');
+      showToast(`Empresa "${nomeFantasia}" atualizada com sucesso!`);
     } else {
-      debtService.addEmpresa({
-        razaoSocial: razaoSocial.trim(),
-        nomeFantasia: nomeFantasia.trim(),
-        cnpj: cnpj.trim(),
-        inscricaoEstadual: inscricaoEstadual.trim() || undefined,
-        telefone: telefone.trim() || undefined,
-        email: email.trim() || undefined,
-        cep: cep.trim() || undefined,
-        endereco: endereco.trim() || undefined,
-        numero: numero.trim() || undefined,
-        complemento: complemento.trim() || undefined,
-        bairro: bairro.trim() || undefined,
-        cidade: cidade.trim() || undefined,
-        estado: estado.trim() || undefined,
-        ativo,
-        modoCarteira,
-      });
-      showToast('Nova empresa cadastrada com sucesso!');
+      debtService.addEmpresa(
+        {
+          razaoSocial: razaoSocial.trim(),
+          nomeFantasia: nomeFantasia.trim(),
+          cnpj: cnpj.trim(),
+          inscricaoEstadual: inscricaoEstadual.trim() || undefined,
+          telefone: telefone.trim() || undefined,
+          email: email.trim() || undefined,
+          cep: cep.trim() || undefined,
+          endereco: endereco.trim() || undefined,
+          numero: numero.trim() || undefined,
+          complemento: complemento.trim() || undefined,
+          bairro: bairro.trim() || undefined,
+          cidade: cidade.trim() || undefined,
+          estado: estado.trim() || undefined,
+          ativo,
+          modoCarteira,
+        },
+        tempEmpresaId
+      );
+      showToast(`Nova empresa "${nomeFantasia}" cadastrada com sucesso!`);
     }
-    setIsEmpresaModalOpen(false);
+
+    setViewMode('list');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
+  // Toggle status in list
   const handleToggleEmpresaStatus = (emp: Empresa) => {
     debtService.toggleEmpresaStatus(emp.id);
     showToast(`Empresa "${emp.nomeFantasia}" ${emp.ativo ? 'desativada' : 'ativada'} com sucesso.`);
   };
 
+  // Delete Empresa
   const handleDeleteEmpresa = (emp: Empresa) => {
-    if (confirm(`Deseja realmente excluir a empresa "${emp.nomeFantasia}"?`)) {
+    if (confirm(`Deseja realmente excluir a empresa "${emp.nomeFantasia}" (${emp.cnpj})?`)) {
       const res = debtService.deleteEmpresa(emp.id);
       if (res.success) {
-        showToast('Empresa excluída com sucesso.');
+        showToast(`Empresa "${emp.nomeFantasia}" excluída com sucesso.`);
       } else {
-        alert(res.message || 'Não foi possível excluir.');
+        alert(res.message || 'Não foi possível excluir a empresa.');
       }
     }
   };
 
-  // --- Payment Data Sub-management ---
-  const handleOpenPayments = (emp: Empresa) => {
-    setManagingPaymentsEmpresa(emp);
-  };
-
+  // =========================================================================
+  // SUB-CRUD DE FORMAS DE PAGAMENTO / RECEBIMENTO
+  // =========================================================================
   const handleOpenAddPayment = () => {
     setEditingPaymentId(null);
     setPaymentType('PIX');
-    setPaymentDescription('');
     setPixKeyType('CNPJ');
-    setPixKey('');
+    setPixKey(cnpj ? cnpj.trim() : '');
+    setPaymentDescription(nomeFantasia ? `PIX Principal - ${nomeFantasia}` : 'PIX Principal');
     setBankName('');
     setAccountDescription('');
     setPaymentActive(true);
-    const existing = managingPaymentsEmpresa
-      ? debtService.getCompanyPaymentData(managingPaymentsEmpresa.id)
-      : [];
-    setIsPrimaryPayment(existing.length === 0);
+    setIsPrimaryPayment(currentPayments.length === 0);
     setIsPaymentModalOpen(true);
   };
 
-  const handleOpenEditPayment = (item: CompanyPaymentData) => {
-    setEditingPaymentId(item.id);
-    setPaymentType(item.type);
-    setPaymentDescription(item.description);
-    setPixKeyType(item.pixKeyType || 'CNPJ');
-    setPixKey(item.pixKey || item.paymentInfo || '');
-    setBankName(item.bankName || '');
-    setAccountDescription(item.accountDescription || '');
-    setPaymentActive(item.active);
-    setIsPrimaryPayment(item.isPrimary);
+  const handleOpenEditPayment = (p: CompanyPaymentData) => {
+    setEditingPaymentId(p.id);
+    setPaymentType(p.type);
+    setPixKeyType(p.pixKeyType || 'CNPJ');
+    setPixKey(p.pixKey || p.paymentInfo || '');
+    setPaymentDescription(p.description);
+    setBankName(p.bankName || '');
+    setAccountDescription(p.accountDescription || '');
+    setPaymentActive(p.active);
+    setIsPrimaryPayment(p.isPrimary);
     setIsPaymentModalOpen(true);
   };
 
   const handleSavePayment = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!managingPaymentsEmpresa) return;
     if (!pixKey.trim()) {
-      showToast('Por favor, informe a chave PIX ou dados de pagamento.');
+      showToast('Por favor, informe a chave PIX ou dado do recebimento.');
       return;
     }
     if (!paymentDescription.trim()) {
-      showToast('Por favor, informe a descrição.');
+      showToast('Por favor, informe uma descrição para esta forma.');
       return;
     }
 
     if (editingPaymentId) {
       debtService.updateCompanyPaymentData(editingPaymentId, {
-        empresaId: managingPaymentsEmpresa.id,
+        empresaId: activeEmpresaId,
         type: paymentType,
         description: paymentDescription.trim(),
         pixKeyType: paymentType === 'PIX' ? pixKeyType : undefined,
@@ -230,10 +250,10 @@ export const EmpresasView: React.FC = () => {
         active: paymentActive,
         isPrimary: isPrimaryPayment,
       });
-      showToast('Dado de recebimento atualizado com sucesso!');
+      showToast('Forma de recebimento atualizada com sucesso!');
     } else {
       debtService.addCompanyPaymentData({
-        empresaId: managingPaymentsEmpresa.id,
+        empresaId: activeEmpresaId,
         type: paymentType,
         description: paymentDescription.trim(),
         pixKeyType: paymentType === 'PIX' ? pixKeyType : undefined,
@@ -244,406 +264,629 @@ export const EmpresasView: React.FC = () => {
         active: paymentActive,
         isPrimary: isPrimaryPayment,
       });
-      showToast('Novo dado de recebimento adicionado à empresa!');
+      showToast('Nova forma de recebimento adicionada à empresa!');
     }
     setIsPaymentModalOpen(false);
   };
 
-  // Filtered List
-  const filteredEmpresas = empresas.filter((emp) => {
-    const q = search.toLowerCase();
-    const matchesSearch =
-      !q ||
-      emp.razaoSocial.toLowerCase().includes(q) ||
-      emp.nomeFantasia.toLowerCase().includes(q) ||
-      emp.cnpj.toLowerCase().includes(q) ||
-      (emp.cidade && emp.cidade.toLowerCase().includes(q));
+  const handleSetPrimaryPayment = (p: CompanyPaymentData) => {
+    debtService.setPrimaryCompanyPaymentData(p.id);
+    showToast(`"${p.description}" definida como forma de recebimento principal da empresa.`);
+  };
 
-    const matchesStatus =
-      statusFilter === 'all' ||
-      (statusFilter === 'active' && emp.ativo) ||
-      (statusFilter === 'inactive' && !emp.ativo);
+  const handleTogglePaymentStatus = (p: CompanyPaymentData) => {
+    debtService.toggleCompanyPaymentDataStatus(p.id);
+    showToast(`Forma "${p.description}" ${p.active ? 'desativada' : 'ativada'}.`);
+  };
 
-    const matchesModo = modoFilter === 'all' || emp.modoCarteira === modoFilter;
+  const handleDeletePayment = (p: CompanyPaymentData) => {
+    if (confirm(`Deseja remover a forma de recebimento "${p.description}"?`)) {
+      debtService.deleteCompanyPaymentData(p.id);
+      showToast(`Forma de recebimento removida com sucesso.`);
+    }
+  };
 
-    return matchesSearch && matchesStatus && matchesModo;
-  });
+  const handleCopy = (text: string, label: string) => {
+    navigator.clipboard?.writeText(text);
+    showToast(`${label} copiado: ${text}`);
+  };
 
+  // =========================================================================
+  // LIST FILTERING, SORTING & PAGINATION
+  // =========================================================================
+  const filteredAndSortedEmpresas = useMemo(() => {
+    const q = search.toLowerCase().trim();
+    let result = empresas.filter((emp) => {
+      const matchesSearch =
+        !q ||
+        emp.razaoSocial.toLowerCase().includes(q) ||
+        emp.nomeFantasia.toLowerCase().includes(q) ||
+        emp.cnpj.toLowerCase().includes(q) ||
+        (emp.cidade && emp.cidade.toLowerCase().includes(q));
+
+      const matchesStatus =
+        statusFilter === 'all' ||
+        (statusFilter === 'active' && emp.ativo) ||
+        (statusFilter === 'inactive' && !emp.ativo);
+
+      const matchesModo = modoFilter === 'all' || emp.modoCarteira === modoFilter;
+
+      return matchesSearch && matchesStatus && matchesModo;
+    });
+
+    result.sort((a, b) => {
+      let cmp = 0;
+      if (sortBy === 'nome') {
+        cmp = a.nomeFantasia.localeCompare(b.nomeFantasia);
+      } else if (sortBy === 'razao') {
+        cmp = a.razaoSocial.localeCompare(b.razaoSocial);
+      } else if (sortBy === 'cidade') {
+        cmp = (a.cidade || '').localeCompare(b.cidade || '');
+      } else if (sortBy === 'cobrancas') {
+        const cA = debtService.getAllDebts().filter((d) => d.empresaId === a.id).length;
+        const cB = debtService.getAllDebts().filter((d) => d.empresaId === b.id).length;
+        cmp = cA - cB;
+      }
+      return sortOrder === 'asc' ? cmp : -cmp;
+    });
+
+    return result;
+  }, [empresas, search, statusFilter, modoFilter, sortBy, sortOrder]);
+
+  const totalPages = Math.max(1, Math.ceil(filteredAndSortedEmpresas.length / itemsPerPage));
+  const paginatedEmpresas = useMemo(() => {
+    const start = (currentPage - 1) * itemsPerPage;
+    return filteredAndSortedEmpresas.slice(start, start + itemsPerPage);
+  }, [filteredAndSortedEmpresas, currentPage, itemsPerPage]);
+
+  const handleToggleSort = (column: 'nome' | 'razao' | 'cidade' | 'cobrancas') => {
+    if (sortBy === column) {
+      setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortBy(column);
+      setSortOrder('asc');
+    }
+  };
+
+  // Metrics
   const totalAtivas = empresas.filter((e) => e.ativo).length;
-  const totalCompartilhadas = empresas.filter((e) => e.modoCarteira === 'COMPARTILHADA').length;
-  const totalExclusivas = empresas.filter((e) => e.modoCarteira === 'EXCLUSIVA').length;
+  const totalInativas = empresas.filter((e) => !e.ativo).length;
 
   return (
-    <div className="space-y-space-md">
-      {/* Toast */}
+    <div className="p-space-lg lg:p-space-xl flex flex-col gap-space-lg max-w-[1720px] mx-auto w-full pb-20 animate-fade-in">
+      {/* Toast Notification */}
       {toastMsg && (
-        <div className="fixed bottom-4 right-4 z-50 bg-primary text-surface px-4 py-2.5 rounded-lg shadow-lg flex items-center gap-2 text-sm animate-fadeIn">
-          <span className="material-symbols-outlined text-secondary text-[20px]">
+        <div className="fixed bottom-6 right-6 z-50 bg-primary text-surface px-4 py-3 rounded-xl shadow-2xl flex items-center gap-2.5 text-sm font-medium border border-secondary">
+          <span className="material-symbols-outlined text-secondary-fixed text-[20px]">
             check_circle
           </span>
           <span>{toastMsg}</span>
         </div>
       )}
 
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-space-sm pb-space-xs border-b border-outline-variant/30">
-        <div>
-          <div className="flex items-center gap-2">
-            <span className="material-symbols-outlined text-primary text-[28px]">
-              domain
-            </span>
-            <h1 className="font-headline-md text-headline-md text-on-surface font-bold">
-              Cadastro de Empresas
-            </h1>
-          </div>
-          <p className="font-body-sm text-body-sm text-on-surface-variant mt-0.5">
-            Gestão multiempresa, dados cadastrais, modo de carteira e dados de recebimento vinculados.
-          </p>
-        </div>
-
-        <button
-          onClick={handleOpenAddEmpresa}
-          className="px-space-md py-2 bg-primary hover:bg-primary-container text-surface rounded-lg font-title-sm font-semibold flex items-center justify-center gap-2 transition-colors shadow-sm cursor-pointer"
-        >
-          <span className="material-symbols-outlined text-[20px]">add_business</span>
-          <span>+ Nova Empresa</span>
-        </button>
-      </div>
-
-      {/* Metrics Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-space-md">
-        <div className="p-4 bg-surface-container-lowest rounded-xl border border-outline-variant/30 shadow-2xs flex flex-col justify-between">
-          <span className="font-label-uppercase text-label-uppercase text-on-surface-variant font-medium">
-            Total de Empresas
-          </span>
-          <div className="flex items-baseline justify-between mt-2">
-            <span className="font-headline-md font-bold font-data-mono text-2xl text-on-surface">
-              {empresas.length}
-            </span>
-            <span className="material-symbols-outlined text-outline-variant text-[24px]">
-              corporate_fare
-            </span>
-          </div>
-        </div>
-
-        <div className="p-4 bg-surface-container-lowest rounded-xl border border-outline-variant/30 shadow-2xs flex flex-col justify-between">
-          <span className="font-label-uppercase text-label-uppercase text-on-surface-variant font-medium">
-            Empresas Ativas
-          </span>
-          <div className="flex items-baseline justify-between mt-2">
-            <span className="font-headline-md font-bold font-data-mono text-2xl text-emerald-600">
-              {totalAtivas}
-            </span>
-            <span className="material-symbols-outlined text-emerald-600/50 text-[24px]">
-              check_circle
-            </span>
-          </div>
-        </div>
-
-        <div className="p-4 bg-surface-container-lowest rounded-xl border border-outline-variant/30 shadow-2xs flex flex-col justify-between">
-          <span className="font-label-uppercase text-label-uppercase text-on-surface-variant font-medium">
-            Carteira Compartilhada
-          </span>
-          <div className="flex items-baseline justify-between mt-2">
-            <span className="font-headline-md font-bold font-data-mono text-2xl text-sky-700">
-              {totalCompartilhadas}
-            </span>
-            <span className="material-symbols-outlined text-sky-600/50 text-[24px]">
-              share
-            </span>
-          </div>
-        </div>
-
-        <div className="p-4 bg-surface-container-lowest rounded-xl border border-outline-variant/30 shadow-2xs flex flex-col justify-between">
-          <span className="font-label-uppercase text-label-uppercase text-on-surface-variant font-medium">
-            Carteira Exclusiva
-          </span>
-          <div className="flex items-baseline justify-between mt-2">
-            <span className="font-headline-md font-bold font-data-mono text-2xl text-purple-700">
-              {totalExclusivas}
-            </span>
-            <span className="material-symbols-outlined text-purple-600/50 text-[24px]">
-              lock
-            </span>
-          </div>
-        </div>
-      </div>
-
-      {/* Filter and Search Bar */}
-      <div className="p-3 bg-surface-container-lowest rounded-xl border border-outline-variant/30 shadow-2xs flex flex-col md:flex-row items-center gap-space-md justify-between">
-        <div className="relative w-full md:w-96">
-          <span className="material-symbols-outlined absolute left-3 top-2.5 text-on-surface-variant text-[18px]">
-            search
-          </span>
-          <input
-            type="text"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Buscar por Razão Social, Fantasia, CNPJ ou Cidade..."
-            className="w-full pl-9 pr-3 py-2 bg-surface-container-low rounded-lg border-0 font-body-sm text-body-sm text-on-surface placeholder:text-on-surface-variant focus:outline-none focus:ring-1 focus:ring-primary"
-          />
-        </div>
-
-        <div className="flex items-center gap-2 flex-wrap w-full md:w-auto">
-          {/* Status Filter */}
-          <select
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value as any)}
-            className="px-3 py-2 bg-surface-container-low rounded-lg border border-outline-variant/30 font-body-sm text-body-sm text-on-surface focus:outline-none cursor-pointer"
-          >
-            <option value="all">Todos os Status</option>
-            <option value="active">Somente Ativas</option>
-            <option value="inactive">Somente Inativas</option>
-          </select>
-
-          {/* Modo Carteira Filter */}
-          <select
-            value={modoFilter}
-            onChange={(e) => setModoFilter(e.target.value as any)}
-            className="px-3 py-2 bg-surface-container-low rounded-lg border border-outline-variant/30 font-body-sm text-body-sm text-on-surface focus:outline-none cursor-pointer"
-          >
-            <option value="all">Todos os Modos de Carteira</option>
-            <option value="COMPARTILHADA">Modo: Compartilhada</option>
-            <option value="EXCLUSIVA">Modo: Exclusiva</option>
-          </select>
-        </div>
-      </div>
-
-      {/* Table of Empresas */}
-      <div className="bg-surface-container-lowest rounded-xl border border-outline-variant/30 shadow-2xs overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left font-body-sm text-xs">
-            <thead>
-              <tr className="bg-surface-container-low text-on-surface-variant font-label-uppercase tracking-wider border-b border-outline-variant/30">
-                <th className="py-3 px-4">Empresa</th>
-                <th className="py-3 px-4">CNPJ / Inscrição</th>
-                <th className="py-3 px-4">Localização</th>
-                <th className="py-3 px-4">Modo de Carteira</th>
-                <th className="py-3 px-4 text-center">Cobranças</th>
-                <th className="py-3 px-4">Recebimentos</th>
-                <th className="py-3 px-4 text-center">Status</th>
-                <th className="py-3 px-4 text-right">Ações</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-outline-variant/15">
-              {filteredEmpresas.length === 0 ? (
-                <tr>
-                  <td colSpan={8} className="py-8 text-center text-on-surface-variant italic">
-                    Nenhuma empresa encontrada com os filtros informados.
-                  </td>
-                </tr>
-              ) : (
-                filteredEmpresas.map((emp) => {
-                  const debtsCount = debtService
-                    .getAllDebts()
-                    .filter((d) => d.empresaId === emp.id).length;
-                  const payments = debtService.getCompanyPaymentData(emp.id);
-                  const activePaymentsCount = payments.filter((p) => p.active).length;
-
-                  return (
-                    <tr key={emp.id} className="hover:bg-surface-container-low/50 transition-colors">
-                      <td className="py-3 px-4">
-                        <div className="flex flex-col">
-                          <strong className="text-primary text-sm font-semibold">
-                            {emp.nomeFantasia}
-                          </strong>
-                          <span className="text-on-surface-variant text-[11px]">
-                            {emp.razaoSocial}
-                          </span>
-                          {emp.email && (
-                            <span className="text-on-surface-variant/80 text-[10px] mt-0.5">
-                              {emp.email} • {emp.telefone || ''}
-                            </span>
-                          )}
-                        </div>
-                      </td>
-
-                      <td className="py-3 px-4 font-data-mono">
-                        <div className="flex flex-col">
-                          <span className="font-semibold text-on-surface">{emp.cnpj}</span>
-                          {emp.inscricaoEstadual && (
-                            <span className="text-[10px] text-on-surface-variant">
-                              IE: {emp.inscricaoEstadual}
-                            </span>
-                          )}
-                        </div>
-                      </td>
-
-                      <td className="py-3 px-4">
-                        <div className="flex flex-col">
-                          <span className="font-medium text-on-surface">
-                            {emp.cidade || '—'} {emp.estado ? `(${emp.estado})` : ''}
-                          </span>
-                          <span className="text-[10px] text-on-surface-variant truncate max-w-[150px]">
-                            {emp.bairro || emp.endereco || '—'}
-                          </span>
-                        </div>
-                      </td>
-
-                      <td className="py-3 px-4">
-                        <div className="flex flex-col gap-1 items-start">
-                          <span
-                            className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded font-badge-sm text-[10px] font-bold uppercase tracking-wider ${
-                              emp.modoCarteira === 'COMPARTILHADA'
-                                ? 'bg-sky-100 text-sky-800 border border-sky-200'
-                                : 'bg-purple-100 text-purple-800 border border-purple-200'
-                            }`}
-                            title={
-                              emp.modoCarteira === 'COMPARTILHADA'
-                                ? 'Cobranças podem ser visualizadas conjuntamente por usuários autorizados'
-                                : 'Cobranças restritas a usuários autorizados desta empresa'
-                            }
-                          >
-                            <span
-                              className={`w-1.5 h-1.5 rounded-full ${
-                                emp.modoCarteira === 'COMPARTILHADA' ? 'bg-sky-600' : 'bg-purple-600'
-                              }`}
-                            />
-                            <span>{emp.modoCarteira === 'COMPARTILHADA' ? 'Compartilhada' : 'Exclusiva'}</span>
-                          </span>
-                        </div>
-                      </td>
-
-                      <td className="py-3 px-4 text-center font-data-mono font-semibold text-on-surface">
-                        <span className="px-2 py-0.5 rounded-full bg-surface-container text-xs">
-                          {debtsCount}
-                        </span>
-                      </td>
-
-                      <td className="py-3 px-4">
-                        <button
-                          type="button"
-                          onClick={() => handleOpenPayments(emp)}
-                          className="inline-flex items-center gap-1 px-2 py-1 rounded bg-surface-container-high hover:bg-surface-container-highest text-primary font-medium text-[11px] transition-colors cursor-pointer"
-                          title="Gerenciar formas de recebimento e chaves PIX desta empresa"
-                        >
-                          <span className="material-symbols-outlined text-[14px]">account_balance</span>
-                          <span>
-                            {activePaymentsCount} forma{activePaymentsCount !== 1 ? 's' : ''}
-                          </span>
-                          <span className="material-symbols-outlined text-[12px]">edit</span>
-                        </button>
-                      </td>
-
-                      <td className="py-3 px-4 text-center">
-                        <span
-                          className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full font-badge-sm text-[10px] font-semibold ${
-                            emp.ativo
-                              ? 'bg-emerald-100 text-emerald-800'
-                              : 'bg-slate-100 text-slate-600'
-                          }`}
-                        >
-                          <span
-                            className={`w-1.5 h-1.5 rounded-full ${
-                              emp.ativo ? 'bg-emerald-600' : 'bg-slate-400'
-                            }`}
-                          />
-                          <span>{emp.ativo ? 'Ativa' : 'Inativa'}</span>
-                        </span>
-                      </td>
-
-                      <td className="py-3 px-4 text-right">
-                        <div className="flex items-center justify-end gap-1">
-                          <button
-                            type="button"
-                            onClick={() => handleOpenEditEmpresa(emp)}
-                            title="Editar Dados Cadastrais"
-                            className="p-1 rounded text-on-surface-variant hover:text-primary hover:bg-surface-container transition-colors cursor-pointer"
-                          >
-                            <span className="material-symbols-outlined text-[18px]">edit</span>
-                          </button>
-
-                          <button
-                            type="button"
-                            onClick={() => handleToggleEmpresaStatus(emp)}
-                            title={emp.ativo ? 'Desativar Empresa' : 'Ativar Empresa'}
-                            className="p-1 rounded text-on-surface-variant hover:text-amber-700 hover:bg-surface-container transition-colors cursor-pointer"
-                          >
-                            <span className="material-symbols-outlined text-[18px]">
-                              {emp.ativo ? 'toggle_on' : 'toggle_off'}
-                            </span>
-                          </button>
-
-                          <button
-                            type="button"
-                            onClick={() => handleDeleteEmpresa(emp)}
-                            title="Excluir Empresa"
-                            className="p-1 rounded text-on-surface-variant hover:text-error hover:bg-error-container/30 transition-colors cursor-pointer"
-                          >
-                            <span className="material-symbols-outlined text-[18px]">delete</span>
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })
-              )}
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-      {/* ========================================================================= */}
-      {/* MODAL: CADASTRO / EDIÇÃO DE EMPRESA                                      */}
-      {/* ========================================================================= */}
-      {isEmpresaModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-surface-scrim/40 backdrop-blur-xs animate-fadeIn">
-          <div className="w-full max-w-2xl bg-surface-container-lowest rounded-2xl shadow-2xl border border-outline-variant/30 flex flex-col max-h-[90vh] overflow-hidden">
-            {/* Header */}
-            <div className="p-space-md border-b border-outline-variant/20 flex items-center justify-between bg-surface-container-low shrink-0">
+      {/* ======================================================================= */}
+      {/* MODO 1: LISTAGEM PRINCIPAL DE EMPRESAS (GRID)                           */}
+      {/* ======================================================================= */}
+      {viewMode === 'list' && (
+        <>
+          {/* Header principal */}
+          <div className="bg-surface-container-lowest rounded-xl p-space-lg shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-space-md border border-outline-variant/30">
+            <div>
               <div className="flex items-center gap-2">
-                <span className="material-symbols-outlined text-primary text-[24px]">
-                  {editingEmpresaId ? 'edit_square' : 'add_business'}
+                <span className="material-symbols-outlined text-primary text-[26px]">
+                  domain
                 </span>
-                <h2 className="font-headline-sm text-headline-sm font-bold text-on-surface">
-                  {editingEmpresaId ? 'Editar Empresa' : 'Nova Empresa'}
-                </h2>
+                <h1 className="font-headline-lg text-headline-lg text-primary tracking-tight font-bold">
+                  EMPRESAS
+                </h1>
               </div>
+              <p className="font-body-sm text-body-sm text-on-surface-variant mt-1">
+                Gerencie as empresas cadastradas no RegCobre.
+              </p>
+            </div>
+
+            <button
+              onClick={handleOpenNovaEmpresa}
+              className="h-10 px-space-md rounded-lg bg-primary hover:bg-primary-container text-surface font-title-md text-sm font-semibold flex items-center justify-center gap-2 transition-colors shadow-sm cursor-pointer self-start md:self-auto shrink-0"
+              type="button"
+            >
+              <span className="material-symbols-outlined text-[18px]">add_business</span>
+              <span>+ Nova Empresa</span>
+            </button>
+          </div>
+
+          {/* Quick Metrics Bar */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-space-md">
+            <div className="bg-surface-container-lowest rounded-xl p-4 shadow-sm border border-outline-variant/30 flex items-center justify-between">
+              <div>
+                <span className="font-label-uppercase text-[11px] font-bold text-on-surface-variant uppercase tracking-wider block">
+                  Total Cadastradas
+                </span>
+                <span className="font-data-mono text-2xl font-bold text-primary mt-1 block">
+                  {empresas.length}
+                </span>
+              </div>
+              <div className="w-10 h-10 rounded-lg bg-surface-container flex items-center justify-center text-primary">
+                <span className="material-symbols-outlined text-[22px]">corporate_fare</span>
+              </div>
+            </div>
+
+            <div className="bg-surface-container-lowest rounded-xl p-4 shadow-sm border border-outline-variant/30 flex items-center justify-between">
+              <div>
+                <span className="font-label-uppercase text-[11px] font-bold text-on-surface-variant uppercase tracking-wider block">
+                  Empresas Ativas
+                </span>
+                <span className="font-data-mono text-2xl font-bold text-emerald-700 mt-1 block">
+                  {totalAtivas}
+                </span>
+              </div>
+              <div className="w-10 h-10 rounded-lg bg-emerald-100 flex items-center justify-center text-emerald-800">
+                <span className="material-symbols-outlined text-[22px]">verified</span>
+              </div>
+            </div>
+
+            <div className="bg-surface-container-lowest rounded-xl p-4 shadow-sm border border-outline-variant/30 flex items-center justify-between">
+              <div>
+                <span className="font-label-uppercase text-[11px] font-bold text-on-surface-variant uppercase tracking-wider block">
+                  Empresas Inativas
+                </span>
+                <span className="font-data-mono text-2xl font-bold text-on-surface-variant mt-1 block">
+                  {totalInativas}
+                </span>
+              </div>
+              <div className="w-10 h-10 rounded-lg bg-surface-container flex items-center justify-center text-outline">
+                <span className="material-symbols-outlined text-[22px]">pause_circle</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Search, Filters and Sort Toolbar */}
+          <div className="bg-surface-container-lowest rounded-xl p-4 shadow-sm border border-outline-variant/30 flex flex-col lg:flex-row lg:items-center justify-between gap-3">
+            {/* Search Input */}
+            <div className="relative flex-1 min-w-[280px]">
+              <span className="material-symbols-outlined absolute left-3 top-2.5 text-on-surface-variant text-[18px]">
+                search
+              </span>
+              <input
+                type="text"
+                value={search}
+                onChange={(e) => {
+                  setSearch(e.target.value);
+                  setCurrentPage(1);
+                }}
+                placeholder="Buscar por razão social, nome fantasia ou CNPJ..."
+                className="w-full h-10 pl-9 pr-3 bg-surface-container-low rounded-lg text-xs text-on-surface placeholder:text-on-surface-variant border border-outline-variant/30 focus:outline-none focus:ring-1 focus:ring-primary shadow-inner"
+              />
+              {search && (
+                <button
+                  type="button"
+                  onClick={() => setSearch('')}
+                  className="absolute right-2.5 top-2.5 text-on-surface-variant hover:text-on-surface"
+                >
+                  ✕
+                </button>
+              )}
+            </div>
+
+            {/* Status Pills */}
+            <div className="flex items-center gap-1.5 flex-wrap">
+              <span className="text-xs text-on-surface-variant font-semibold mr-1">Status:</span>
               <button
                 type="button"
-                onClick={() => setIsEmpresaModalOpen(false)}
-                className="p-1 rounded-full text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high transition-colors"
+                onClick={() => {
+                  setStatusFilter('all');
+                  setCurrentPage(1);
+                }}
+                className={`h-8 px-3 rounded-lg text-xs font-semibold transition-colors cursor-pointer ${
+                  statusFilter === 'all'
+                    ? 'bg-primary text-surface shadow-2xs'
+                    : 'bg-surface-container hover:bg-surface-variant text-on-surface'
+                }`}
               >
-                <span className="material-symbols-outlined text-[20px]">close</span>
+                Todas ({empresas.length})
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setStatusFilter('active');
+                  setCurrentPage(1);
+                }}
+                className={`h-8 px-3 rounded-lg text-xs font-semibold transition-colors cursor-pointer ${
+                  statusFilter === 'active'
+                    ? 'bg-primary text-surface shadow-2xs'
+                    : 'bg-surface-container hover:bg-surface-variant text-on-surface'
+                }`}
+              >
+                Ativas ({totalAtivas})
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setStatusFilter('inactive');
+                  setCurrentPage(1);
+                }}
+                className={`h-8 px-3 rounded-lg text-xs font-semibold transition-colors cursor-pointer ${
+                  statusFilter === 'inactive'
+                    ? 'bg-primary text-surface shadow-2xs'
+                    : 'bg-surface-container hover:bg-surface-variant text-on-surface'
+                }`}
+              >
+                Inativas ({totalInativas})
               </button>
             </div>
 
-            {/* Form Body */}
-            <form onSubmit={handleSaveEmpresa} className="flex-1 overflow-y-auto p-space-lg space-y-4 text-xs">
-              {/* Razão Social & Nome Fantasia */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            {/* Visibility Mode Filter */}
+            <div className="flex items-center gap-1.5 shrink-0">
+              <span className="text-xs text-on-surface-variant font-semibold">Visibilidade:</span>
+              <select
+                value={modoFilter}
+                onChange={(e) => {
+                  setModoFilter(e.target.value as any);
+                  setCurrentPage(1);
+                }}
+                className="h-9 px-2 bg-surface-container-low rounded-lg text-xs font-semibold text-on-surface border border-outline-variant/30 focus:outline-none cursor-pointer"
+              >
+                <option value="all">Todas</option>
+                <option value="COMPARTILHADA">Compartilhada</option>
+                <option value="EXCLUSIVA">Exclusiva</option>
+              </select>
+            </div>
+          </div>
+
+          {/* Grid / Tabela de Empresas */}
+          <div className="bg-surface-container-lowest rounded-xl shadow-sm border border-outline-variant/30 overflow-hidden flex flex-col">
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs border-collapse">
+                <thead>
+                  <tr className="bg-surface-container text-on-surface font-label-uppercase text-[11px] tracking-wider border-b border-outline-variant/20 select-none">
+                    <th
+                      className="py-3 px-4 cursor-pointer hover:bg-surface-container-high transition-colors"
+                      onClick={() => handleToggleSort('nome')}
+                    >
+                      <div className="flex items-center gap-1">
+                        <span>Empresa</span>
+                        {sortBy === 'nome' && (
+                          <span className="material-symbols-outlined text-[14px]">
+                            {sortOrder === 'asc' ? 'arrow_upward' : 'arrow_downward'}
+                          </span>
+                        )}
+                      </div>
+                    </th>
+                    <th className="py-3 px-4">CNPJ</th>
+                    <th
+                      className="py-3 px-4 cursor-pointer hover:bg-surface-container-high transition-colors"
+                      onClick={() => handleToggleSort('cidade')}
+                    >
+                      <div className="flex items-center gap-1">
+                        <span>Cidade/UF</span>
+                        {sortBy === 'cidade' && (
+                          <span className="material-symbols-outlined text-[14px]">
+                            {sortOrder === 'asc' ? 'arrow_upward' : 'arrow_downward'}
+                          </span>
+                        )}
+                      </div>
+                    </th>
+                    <th
+                      className="py-3 px-4 text-center cursor-pointer hover:bg-surface-container-high transition-colors"
+                      onClick={() => handleToggleSort('cobrancas')}
+                    >
+                      <div className="flex items-center justify-center gap-1">
+                        <span>Cobranças</span>
+                        {sortBy === 'cobrancas' && (
+                          <span className="material-symbols-outlined text-[14px]">
+                            {sortOrder === 'asc' ? 'arrow_upward' : 'arrow_downward'}
+                          </span>
+                        )}
+                      </div>
+                    </th>
+                    <th className="py-3 px-4">Visibilidade</th>
+                    <th className="py-3 px-4 text-center">Status</th>
+                    <th className="py-3 px-4 text-right">Ações</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-outline-variant/15 font-body-sm">
+                  {paginatedEmpresas.length === 0 ? (
+                    <tr>
+                      <td colSpan={7} className="py-12 text-center text-on-surface-variant">
+                        <span className="material-symbols-outlined text-[36px] text-outline mb-1 block">
+                          domain_disabled
+                        </span>
+                        <p className="font-semibold text-sm text-on-surface">Nenhuma empresa encontrada</p>
+                        <p className="text-xs mt-0.5">Tente ajustar a busca ou os filtros de status.</p>
+                      </td>
+                    </tr>
+                  ) : (
+                    paginatedEmpresas.map((emp) => {
+                      const debtsCount = debtService
+                        .getAllDebts()
+                        .filter((d) => d.empresaId === emp.id).length;
+                      const payments = debtService.getCompanyPaymentData(emp.id);
+                      const activePaymentsCount = payments.filter((p) => p.active).length;
+
+                      return (
+                        <tr
+                          key={emp.id}
+                          className="hover:bg-surface-container-low/50 transition-colors group cursor-pointer"
+                          onClick={() => handleOpenEditEmpresa(emp)}
+                        >
+                          {/* Coluna 1: Empresa */}
+                          <td className="py-3 px-4">
+                            <div className="flex flex-col">
+                              <strong className="text-primary text-sm font-bold group-hover:underline">
+                                {emp.nomeFantasia}
+                              </strong>
+                              <span className="text-on-surface-variant text-[11px] truncate max-w-[280px]">
+                                {emp.razaoSocial}
+                              </span>
+                              {emp.email && (
+                                <span className="text-on-surface-variant/80 text-[10px] mt-0.5">
+                                  {emp.email} {emp.telefone ? `• ${emp.telefone}` : ''}
+                                </span>
+                              )}
+                            </div>
+                          </td>
+
+                          {/* Coluna 2: CNPJ */}
+                          <td className="py-3 px-4 font-data-mono">
+                            <div className="flex flex-col">
+                              <span className="font-semibold text-on-surface">{emp.cnpj}</span>
+                              {emp.inscricaoEstadual && (
+                                <span className="text-[10px] text-on-surface-variant">
+                                  IE: {emp.inscricaoEstadual}
+                                </span>
+                              )}
+                            </div>
+                          </td>
+
+                          {/* Coluna 3: Cidade/UF */}
+                          <td className="py-3 px-4">
+                            <div className="flex flex-col">
+                              <span className="font-medium text-on-surface">
+                                {emp.cidade || '—'} {emp.estado ? `(${emp.estado})` : ''}
+                              </span>
+                              <span className="text-[10px] text-on-surface-variant truncate max-w-[160px]">
+                                {emp.bairro || emp.endereco || '—'}
+                              </span>
+                            </div>
+                          </td>
+
+                          {/* Coluna 4: Cobranças */}
+                          <td className="py-3 px-4 text-center">
+                            <span className="inline-flex items-center justify-center px-2.5 py-0.5 rounded-full bg-surface-container font-data-mono font-bold text-xs text-primary">
+                              {debtsCount}
+                            </span>
+                          </td>
+
+                          {/* Coluna 5: Visibilidade */}
+                          <td className="py-3 px-4">
+                            <span
+                              className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded font-badge-sm text-[10px] font-bold uppercase tracking-wider ${
+                                emp.modoCarteira === 'COMPARTILHADA'
+                                  ? 'bg-sky-100 text-sky-800 border border-sky-300'
+                                  : 'bg-purple-100 text-purple-800 border border-purple-300'
+                              }`}
+                              title={
+                                emp.modoCarteira === 'COMPARTILHADA'
+                                  ? 'Cobranças podem aparecer junto com cobranças de outras empresas'
+                                  : 'Cobranças ficam restritas somente aos usuários desta empresa'
+                              }
+                            >
+                              <span
+                                className={`w-1.5 h-1.5 rounded-full ${
+                                  emp.modoCarteira === 'COMPARTILHADA' ? 'bg-sky-600' : 'bg-purple-600'
+                                }`}
+                              />
+                              <span>{emp.modoCarteira}</span>
+                            </span>
+                          </td>
+
+                          {/* Coluna 6: Status */}
+                          <td className="py-3 px-4 text-center">
+                            <span
+                              className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full font-badge-sm text-[10px] font-semibold ${
+                                emp.ativo
+                                  ? 'bg-emerald-100 text-emerald-800'
+                                  : 'bg-slate-200 text-slate-700'
+                              }`}
+                            >
+                              <span
+                                className={`w-1.5 h-1.5 rounded-full ${
+                                  emp.ativo ? 'bg-emerald-600' : 'bg-slate-500'
+                                }`}
+                              />
+                              <span>{emp.ativo ? 'Ativa' : 'Inativa'}</span>
+                            </span>
+                          </td>
+
+                          {/* Coluna 7: Ações */}
+                          <td className="py-3 px-4 text-right" onClick={(e) => e.stopPropagation()}>
+                            <div className="flex items-center justify-end gap-1.5">
+                              <button
+                                type="button"
+                                onClick={() => handleOpenEditEmpresa(emp)}
+                                className="px-2.5 py-1 rounded-lg bg-surface-container hover:bg-primary hover:text-surface text-primary font-semibold text-xs transition-colors flex items-center gap-1 cursor-pointer"
+                                title="Abrir cadastro e formas de pagamento da empresa"
+                              >
+                                <span className="material-symbols-outlined text-[15px]">edit</span>
+                                <span>Editar</span>
+                              </button>
+
+                              <button
+                                type="button"
+                                onClick={() => handleToggleEmpresaStatus(emp)}
+                                className={`p-1.5 rounded-lg text-xs transition-colors cursor-pointer ${
+                                  emp.ativo
+                                    ? 'hover:bg-amber-100 hover:text-amber-800 text-on-surface-variant'
+                                    : 'hover:bg-emerald-100 hover:text-emerald-800 text-on-surface-variant'
+                                }`}
+                                title={emp.ativo ? 'Desativar Empresa' : 'Ativar Empresa'}
+                              >
+                                <span className="material-symbols-outlined text-[18px]">
+                                  {emp.ativo ? 'toggle_on' : 'toggle_off'}
+                                </span>
+                              </button>
+
+                              <button
+                                type="button"
+                                onClick={() => handleDeleteEmpresa(emp)}
+                                className="p-1.5 rounded-lg text-on-surface-variant hover:text-error hover:bg-error-container/30 transition-colors cursor-pointer"
+                                title="Excluir Empresa"
+                              >
+                                <span className="material-symbols-outlined text-[18px]">delete</span>
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })
+                  )}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Pagination Controls */}
+            <div className="p-3 bg-surface-container-low border-t border-outline-variant/20 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-on-surface-variant">
+              <div className="flex items-center gap-2">
+                <span>
+                  Mostrando {paginatedEmpresas.length === 0 ? 0 : (currentPage - 1) * itemsPerPage + 1} a{' '}
+                  {Math.min(currentPage * itemsPerPage, filteredAndSortedEmpresas.length)} de{' '}
+                  <strong>{filteredAndSortedEmpresas.length}</strong> empresas
+                </span>
+                <span className="hidden sm:inline">•</span>
+                <div className="flex items-center gap-1">
+                  <span>Itens por página:</span>
+                  <select
+                    value={itemsPerPage}
+                    onChange={(e) => {
+                      setItemsPerPage(Number(e.target.value));
+                      setCurrentPage(1);
+                    }}
+                    className="h-7 px-1.5 bg-surface-container-lowest rounded border border-outline-variant/30 text-xs font-semibold focus:outline-none cursor-pointer"
+                  >
+                    <option value={5}>5</option>
+                    <option value={10}>10</option>
+                    <option value={20}>20</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-1">
+                <button
+                  type="button"
+                  disabled={currentPage === 1}
+                  onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                  className="px-2.5 py-1 rounded bg-surface-container hover:bg-surface-variant disabled:opacity-40 disabled:cursor-not-allowed font-semibold transition-colors"
+                >
+                  Anterior
+                </button>
+                <span className="px-2 font-data-mono font-semibold">
+                  Página {currentPage} de {totalPages}
+                </span>
+                <button
+                  type="button"
+                  disabled={currentPage >= totalPages}
+                  onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                  className="px-2.5 py-1 rounded bg-surface-container hover:bg-surface-variant disabled:opacity-40 disabled:cursor-not-allowed font-semibold transition-colors"
+                >
+                  Próxima
+                </button>
+              </div>
+            </div>
+          </div>
+        </>
+      )}
+
+      {/* ======================================================================= */}
+      {/* MODO 2: CADASTRO INDIVIDUAL DA EMPRESA (FICHA COMPLETA)                 */}
+      {/* ======================================================================= */}
+      {viewMode === 'form' && (
+        <form onSubmit={handleSaveEmpresa} className="space-y-6">
+          {/* Header da Ficha Individual */}
+          <div className="bg-surface-container-lowest rounded-xl p-space-lg shadow-sm border border-outline-variant/30 flex flex-col md:flex-row md:items-center justify-between gap-space-md">
+            <div>
+              <div className="flex items-center gap-2 mb-1">
+                <button
+                  type="button"
+                  onClick={() => setViewMode('list')}
+                  className="inline-flex items-center gap-1 text-primary hover:underline font-semibold text-xs cursor-pointer"
+                >
+                  <span className="material-symbols-outlined text-[16px]">arrow_back</span>
+                  <span>Voltar para Lista de Empresas</span>
+                </button>
+              </div>
+              <h1 className="font-headline-lg text-headline-lg text-primary tracking-tight font-bold">
+                {editingEmpresaId ? `Editar Empresa: ${nomeFantasia || 'Empresa'}` : 'Nova Empresa'}
+              </h1>
+              <p className="font-body-sm text-body-sm text-on-surface-variant mt-0.5">
+                {editingEmpresaId
+                  ? 'Ficha cadastral completa, formas de recebimento e visibilidade das cobranças.'
+                  : 'Preencha os dados cadastrais, defina as formas de pagamento e a visibilidade das cobranças.'}
+              </p>
+            </div>
+
+            <div className="flex items-center gap-2 shrink-0">
+              <button
+                type="button"
+                onClick={() => setViewMode('list')}
+                className="h-10 px-4 rounded-lg bg-surface-container hover:bg-surface-variant text-on-surface font-semibold text-xs transition-colors cursor-pointer"
+              >
+                Cancelar
+              </button>
+              <button
+                type="submit"
+                className="h-10 px-5 rounded-lg bg-primary hover:bg-primary-container text-surface font-semibold text-xs transition-colors shadow-sm cursor-pointer flex items-center gap-1.5"
+              >
+                <span className="material-symbols-outlined text-[18px]">save</span>
+                <span>Salvar Empresa</span>
+              </button>
+            </div>
+          </div>
+
+          {/* ===================================================================== */}
+          {/* SEÇÃO 1: DADOS DA EMPRESA                                            */}
+          {/* ===================================================================== */}
+          <div className="bg-surface-container-lowest rounded-xl shadow-sm border border-outline-variant/30 overflow-hidden">
+            <div className="p-4 bg-surface-container-low border-b border-outline-variant/20 flex items-center gap-2">
+              <span className="material-symbols-outlined text-[20px] text-primary">domain</span>
+              <h2 className="font-title-md font-bold text-primary text-sm uppercase tracking-wider">
+                Dados da Empresa
+              </h2>
+            </div>
+
+            <div className="p-space-lg space-y-4 text-xs">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="font-label-uppercase text-[10px] text-outline font-bold uppercase tracking-wider block mb-1">
-                    Razão Social *
+                  <label className="block font-label-uppercase font-bold text-outline mb-1 text-[11px]">
+                    RAZÃO SOCIAL *
                   </label>
                   <input
                     type="text"
                     required
                     value={razaoSocial}
                     onChange={(e) => setRazaoSocial(e.target.value)}
-                    placeholder="Ex: ABC Recuperação de Ativos Ltda"
-                    className="w-full px-3 py-2 rounded-lg bg-surface-container-low border border-outline-variant/40 text-on-surface font-body-sm focus:outline-none focus:ring-1 focus:ring-primary"
+                    placeholder="Ex: ABC Comércio e Serviços Ltda"
+                    className="w-full h-10 px-3 bg-surface-container-low rounded-lg text-xs font-semibold text-on-surface border border-outline-variant/30 focus:outline-none focus:ring-1 focus:ring-primary shadow-inner"
                   />
                 </div>
+
                 <div>
-                  <label className="font-label-uppercase text-[10px] text-outline font-bold uppercase tracking-wider block mb-1">
-                    Nome Fantasia *
+                  <label className="block font-label-uppercase font-bold text-outline mb-1 text-[11px]">
+                    NOME FANTASIA *
                   </label>
                   <input
                     type="text"
                     required
                     value={nomeFantasia}
                     onChange={(e) => setNomeFantasia(e.target.value)}
-                    placeholder="Ex: ABC Cobranças"
-                    className="w-full px-3 py-2 rounded-lg bg-surface-container-low border border-outline-variant/40 text-on-surface font-body-sm focus:outline-none focus:ring-1 focus:ring-primary"
+                    placeholder="Ex: ABC Comercial"
+                    className="w-full h-10 px-3 bg-surface-container-low rounded-lg text-xs font-semibold text-on-surface border border-outline-variant/30 focus:outline-none focus:ring-1 focus:ring-primary shadow-inner"
                   />
                 </div>
               </div>
 
-              {/* CNPJ & IE */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
                 <div>
-                  <label className="font-label-uppercase text-[10px] text-outline font-bold uppercase tracking-wider block mb-1">
+                  <label className="block font-label-uppercase font-bold text-outline mb-1 text-[11px]">
                     CNPJ *
                   </label>
                   <input
@@ -652,143 +895,374 @@ export const EmpresasView: React.FC = () => {
                     value={cnpj}
                     onChange={(e) => setCnpj(e.target.value)}
                     placeholder="00.000.000/0000-00"
-                    className="w-full px-3 py-2 rounded-lg bg-surface-container-low border border-outline-variant/40 text-on-surface font-data-mono font-medium focus:outline-none focus:ring-1 focus:ring-primary"
+                    className="w-full h-10 px-3 bg-surface-container-low rounded-lg text-xs font-semibold text-on-surface font-data-mono border border-outline-variant/30 focus:outline-none focus:ring-1 focus:ring-primary shadow-inner"
                   />
                 </div>
+
                 <div>
-                  <label className="font-label-uppercase text-[10px] text-outline font-bold uppercase tracking-wider block mb-1">
-                    Inscrição Estadual (Opcional)
+                  <label className="block font-label-uppercase font-bold text-outline mb-1 text-[11px]">
+                    INSCRIÇÃO ESTADUAL
                   </label>
                   <input
                     type="text"
                     value={inscricaoEstadual}
                     onChange={(e) => setInscricaoEstadual(e.target.value)}
-                    placeholder="Ex: 123.456.789.000"
-                    className="w-full px-3 py-2 rounded-lg bg-surface-container-low border border-outline-variant/40 text-on-surface font-data-mono focus:outline-none focus:ring-1 focus:ring-primary"
+                    placeholder="Isento ou número da IE"
+                    className="w-full h-10 px-3 bg-surface-container-low rounded-lg text-xs font-semibold text-on-surface font-data-mono border border-outline-variant/30 focus:outline-none focus:ring-1 focus:ring-primary shadow-inner"
                   />
                 </div>
-              </div>
 
-              {/* Telefone & E-mail */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <label className="font-label-uppercase text-[10px] text-outline font-bold uppercase tracking-wider block mb-1">
-                    Telefone Corporativo
+                  <label className="block font-label-uppercase font-bold text-outline mb-1 text-[11px]">
+                    TELEFONE
                   </label>
                   <input
                     type="text"
                     value={telefone}
                     onChange={(e) => setTelefone(e.target.value)}
                     placeholder="(00) 0000-0000"
-                    className="w-full px-3 py-2 rounded-lg bg-surface-container-low border border-outline-variant/40 text-on-surface font-data-mono focus:outline-none focus:ring-1 focus:ring-primary"
+                    className="w-full h-10 px-3 bg-surface-container-low rounded-lg text-xs font-semibold text-on-surface border border-outline-variant/30 focus:outline-none focus:ring-1 focus:ring-primary shadow-inner"
                   />
                 </div>
+
                 <div>
-                  <label className="font-label-uppercase text-[10px] text-outline font-bold uppercase tracking-wider block mb-1">
-                    E-mail Corporativo
+                  <label className="block font-label-uppercase font-bold text-outline mb-1 text-[11px]">
+                    E-MAIL CORPORATIVO
                   </label>
                   <input
                     type="email"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    placeholder="contato@empresa.com.br"
-                    className="w-full px-3 py-2 rounded-lg bg-surface-container-low border border-outline-variant/40 text-on-surface focus:outline-none focus:ring-1 focus:ring-primary"
+                    placeholder="financeiro@empresa.com.br"
+                    className="w-full h-10 px-3 bg-surface-container-low rounded-lg text-xs font-semibold text-on-surface border border-outline-variant/30 focus:outline-none focus:ring-1 focus:ring-primary shadow-inner"
                   />
                 </div>
               </div>
 
               {/* Endereço */}
-              <div className="p-3 bg-surface-container-low/50 rounded-xl border border-outline-variant/20 space-y-2">
-                <span className="font-label-uppercase text-[10px] text-outline font-bold uppercase tracking-wider block">
-                  Endereço da Sede
-                </span>
-                <div className="grid grid-cols-3 gap-2">
-                  <div className="col-span-1">
-                    <label className="text-[10px] text-on-surface-variant block mb-0.5">CEP</label>
-                    <input
-                      type="text"
-                      value={cep}
-                      onChange={(e) => setCep(e.target.value)}
-                      placeholder="00000-000"
-                      className="w-full px-2.5 py-1.5 rounded bg-surface-container-lowest border border-outline-variant/30 text-on-surface font-data-mono focus:outline-none"
-                    />
-                  </div>
-                  <div className="col-span-2">
-                    <label className="text-[10px] text-on-surface-variant block mb-0.5">Logradouro</label>
-                    <input
-                      type="text"
-                      value={endereco}
-                      onChange={(e) => setEndereco(e.target.value)}
-                      placeholder="Av. / Rua..."
-                      className="w-full px-2.5 py-1.5 rounded bg-surface-container-lowest border border-outline-variant/30 text-on-surface focus:outline-none"
-                    />
-                  </div>
+              <div className="grid grid-cols-1 sm:grid-cols-3 md:grid-cols-6 gap-4 pt-2 border-t border-outline-variant/20">
+                <div>
+                  <label className="block font-label-uppercase font-bold text-outline mb-1 text-[10px]">
+                    CEP
+                  </label>
+                  <input
+                    type="text"
+                    value={cep}
+                    onChange={(e) => setCep(e.target.value)}
+                    placeholder="00000-000"
+                    className="w-full h-9 px-3 bg-surface-container-low rounded-lg text-xs font-semibold text-on-surface font-data-mono border border-outline-variant/30 focus:outline-none"
+                  />
                 </div>
-                <div className="grid grid-cols-4 gap-2">
-                  <div>
-                    <label className="text-[10px] text-on-surface-variant block mb-0.5">Número</label>
-                    <input
-                      type="text"
-                      value={numero}
-                      onChange={(e) => setNumero(e.target.value)}
-                      placeholder="123"
-                      className="w-full px-2.5 py-1.5 rounded bg-surface-container-lowest border border-outline-variant/30 text-on-surface focus:outline-none"
-                    />
-                  </div>
-                  <div>
-                    <label className="text-[10px] text-on-surface-variant block mb-0.5">Complemento</label>
-                    <input
-                      type="text"
-                      value={complemento}
-                      onChange={(e) => setComplemento(e.target.value)}
-                      placeholder="Sala 10"
-                      className="w-full px-2.5 py-1.5 rounded bg-surface-container-lowest border border-outline-variant/30 text-on-surface focus:outline-none"
-                    />
-                  </div>
-                  <div>
-                    <label className="text-[10px] text-on-surface-variant block mb-0.5">Bairro</label>
-                    <input
-                      type="text"
-                      value={bairro}
-                      onChange={(e) => setBairro(e.target.value)}
-                      placeholder="Centro"
-                      className="w-full px-2.5 py-1.5 rounded bg-surface-container-lowest border border-outline-variant/30 text-on-surface focus:outline-none"
-                    />
-                  </div>
-                  <div>
-                    <label className="text-[10px] text-on-surface-variant block mb-0.5">Cidade / UF</label>
-                    <div className="flex gap-1">
-                      <input
-                        type="text"
-                        value={cidade}
-                        onChange={(e) => setCidade(e.target.value)}
-                        placeholder="São Paulo"
-                        className="w-full px-2 py-1.5 rounded bg-surface-container-lowest border border-outline-variant/30 text-on-surface focus:outline-none"
-                      />
-                      <input
-                        type="text"
-                        maxLength={2}
-                        value={estado}
-                        onChange={(e) => setEstado(e.target.value.toUpperCase())}
-                        placeholder="SP"
-                        className="w-12 text-center uppercase px-1 py-1.5 rounded bg-surface-container-lowest border border-outline-variant/30 text-on-surface font-data-mono focus:outline-none"
-                      />
-                    </div>
-                  </div>
+
+                <div className="sm:col-span-2">
+                  <label className="block font-label-uppercase font-bold text-outline mb-1 text-[10px]">
+                    LOGRADOURO / ENDEREÇO
+                  </label>
+                  <input
+                    type="text"
+                    value={endereco}
+                    onChange={(e) => setEndereco(e.target.value)}
+                    placeholder="Av. Brasil"
+                    className="w-full h-9 px-3 bg-surface-container-low rounded-lg text-xs font-semibold text-on-surface border border-outline-variant/30 focus:outline-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="block font-label-uppercase font-bold text-outline mb-1 text-[10px]">
+                    NÚMERO
+                  </label>
+                  <input
+                    type="text"
+                    value={numero}
+                    onChange={(e) => setNumero(e.target.value)}
+                    placeholder="1000"
+                    className="w-full h-9 px-3 bg-surface-container-low rounded-lg text-xs font-semibold text-on-surface border border-outline-variant/30 focus:outline-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="block font-label-uppercase font-bold text-outline mb-1 text-[10px]">
+                    COMPLEMENTO
+                  </label>
+                  <input
+                    type="text"
+                    value={complemento}
+                    onChange={(e) => setComplemento(e.target.value)}
+                    placeholder="Sala 201"
+                    className="w-full h-9 px-3 bg-surface-container-low rounded-lg text-xs font-semibold text-on-surface border border-outline-variant/30 focus:outline-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="block font-label-uppercase font-bold text-outline mb-1 text-[10px]">
+                    BAIRRO
+                  </label>
+                  <input
+                    type="text"
+                    value={bairro}
+                    onChange={(e) => setBairro(e.target.value)}
+                    placeholder="Centro"
+                    className="w-full h-9 px-3 bg-surface-container-low rounded-lg text-xs font-semibold text-on-surface border border-outline-variant/30 focus:outline-none"
+                  />
                 </div>
               </div>
 
-              {/* Modo de Carteira */}
-              <div className="p-3 bg-surface-container-low rounded-xl border border-outline-variant/30 space-y-1.5">
-                <label className="font-label-uppercase text-[10px] text-primary font-bold uppercase tracking-wider block">
-                  Modo de Carteira
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div>
+                  <label className="block font-label-uppercase font-bold text-outline mb-1 text-[10px]">
+                    CIDADE
+                  </label>
+                  <input
+                    type="text"
+                    value={cidade}
+                    onChange={(e) => setCidade(e.target.value)}
+                    placeholder="São Paulo"
+                    className="w-full h-9 px-3 bg-surface-container-low rounded-lg text-xs font-semibold text-on-surface border border-outline-variant/30 focus:outline-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="block font-label-uppercase font-bold text-outline mb-1 text-[10px]">
+                    ESTADO (UF)
+                  </label>
+                  <select
+                    value={estado}
+                    onChange={(e) => setEstado(e.target.value)}
+                    className="w-full h-9 px-3 bg-surface-container-low rounded-lg text-xs font-semibold text-on-surface border border-outline-variant/30 focus:outline-none cursor-pointer"
+                  >
+                    {['AC','AL','AP','AM','BA','CE','DF','ES','GO','MA','MT','MS','MG','PA','PB','PR','PE','PI','RJ','RN','RS','RO','RR','SC','SP','SE','TO'].map(
+                      (uf) => (
+                        <option key={uf} value={uf}>
+                          {uf}
+                        </option>
+                      )
+                    )}
+                  </select>
+                </div>
+
+                <div className="flex items-center pt-5">
+                  <label className="flex items-center gap-2 cursor-pointer select-none">
+                    <input
+                      type="checkbox"
+                      checked={ativo}
+                      onChange={(e) => setAtivo(e.target.checked)}
+                      className="w-4 h-4 rounded text-primary focus:ring-primary accent-primary"
+                    />
+                    <span className="text-xs font-bold text-on-surface">Empresa Ativa no Sistema</span>
+                  </label>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* ===================================================================== */}
+          {/* SEÇÃO 2: FORMAS DE PAGAMENTO / RECEBIMENTO (SUB-CRUD DA EMPRESA)      */}
+          {/* ===================================================================== */}
+          <div className="bg-surface-container-lowest rounded-xl shadow-sm border border-outline-variant/30 overflow-hidden">
+            <div className="p-4 bg-surface-container-low border-b border-outline-variant/20 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="material-symbols-outlined text-[20px] text-primary">
+                    account_balance_wallet
+                  </span>
+                  <h2 className="font-title-md font-bold text-primary text-sm uppercase tracking-wider">
+                    Formas de Pagamento / Recebimento
+                  </h2>
+                </div>
+                <p className="text-xs text-on-surface-variant mt-0.5">
+                  Chaves PIX e dados bancários oficiais utilizados na cobrança para os clientes desta empresa.
+                </p>
+              </div>
+
+              <button
+                type="button"
+                onClick={handleOpenAddPayment}
+                className="h-9 px-3 bg-primary hover:bg-primary-container text-surface rounded-lg font-semibold text-xs flex items-center justify-center gap-1.5 transition-colors cursor-pointer self-start sm:self-auto shrink-0 shadow-2xs"
+              >
+                <span className="material-symbols-outlined text-[16px]">add</span>
+                <span>+ Adicionar Forma</span>
+              </button>
+            </div>
+
+            <div className="p-4">
+              {currentPayments.length === 0 ? (
+                <div className="p-8 text-center bg-surface-container-low/40 rounded-xl border border-dashed border-outline-variant/40">
+                  <span className="material-symbols-outlined text-outline text-[36px] mb-2 block">
+                    account_balance
+                  </span>
+                  <p className="font-semibold text-sm text-on-surface">
+                    Nenhuma forma de recebimento cadastrada para esta empresa.
+                  </p>
+                  <p className="text-xs text-on-surface-variant mt-1">
+                    Cadastre chaves PIX (CNPJ, E-mail, Telefone, Aleatória) ou contas bancárias para repasse aos devedores.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={handleOpenAddPayment}
+                    className="mt-3 px-4 py-2 rounded-lg bg-secondary hover:bg-secondary-container text-on-secondary hover:text-on-secondary-container font-semibold text-xs transition-colors cursor-pointer"
+                  >
+                    + Cadastrar Primeira Forma
+                  </button>
+                </div>
+              ) : (
+                <div className="divide-y divide-outline-variant/15 border border-outline-variant/20 rounded-xl overflow-hidden">
+                  {currentPayments.map((p) => (
+                    <div
+                      key={p.id}
+                      className={`p-4 transition-colors flex flex-col md:flex-row md:items-center justify-between gap-4 ${
+                        p.isPrimary
+                          ? 'bg-surface-container-low/70 border-l-4 border-primary'
+                          : p.active
+                          ? 'hover:bg-surface-container-low/30'
+                          : 'bg-surface-container/30 opacity-70'
+                      }`}
+                    >
+                      {/* Left: Info */}
+                      <div className="flex flex-col gap-1.5 flex-1 min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="px-2 py-0.5 rounded bg-secondary-container text-on-secondary-container font-badge-sm text-[10px] font-bold uppercase">
+                            {p.type} {p.pixKeyType ? `• ${p.pixKeyType}` : ''}
+                          </span>
+
+                          {p.isPrimary && (
+                            <span className="px-2 py-0.5 rounded-full bg-primary text-surface font-badge-sm text-[10px] font-bold uppercase flex items-center gap-1 shadow-2xs">
+                              <span className="material-symbols-outlined text-[12px]">star</span>
+                              Principal
+                            </span>
+                          )}
+
+                          <strong className="text-sm font-bold text-primary truncate max-w-[300px]">
+                            {p.description}
+                          </strong>
+
+                          <span
+                            className={`px-2 py-0.5 rounded font-badge-sm text-[10px] font-bold ${
+                              p.active
+                                ? 'bg-secondary-container text-on-secondary-container'
+                                : 'bg-surface-container-highest text-outline'
+                            }`}
+                          >
+                            {p.active ? 'Ativo' : 'Inativo'}
+                          </span>
+                        </div>
+
+                        {/* Chave / Dado */}
+                        <div className="flex items-center gap-2 flex-wrap pt-0.5">
+                          <span className="text-xs text-on-surface-variant font-semibold">Chave / Dado:</span>
+                          <span className="font-data-mono text-xs font-bold text-on-surface bg-surface-container px-2.5 py-1 rounded border border-outline-variant/20 select-all inline-block">
+                            {p.pixKey || p.paymentInfo}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => handleCopy(p.pixKey || p.paymentInfo || '', 'Chave de Recebimento')}
+                            className="p-1 rounded hover:bg-surface-container text-on-surface-variant hover:text-secondary transition-colors cursor-pointer"
+                            title="Copiar chave"
+                          >
+                            <span className="material-symbols-outlined text-[16px]">content_copy</span>
+                          </button>
+                        </div>
+
+                        {/* Detalhes Bancários Opcionais */}
+                        {(p.bankName || p.accountDescription) && (
+                          <div className="flex items-center gap-2 text-xs text-on-surface-variant">
+                            <span className="material-symbols-outlined text-[14px] text-outline">
+                              account_balance
+                            </span>
+                            {p.bankName && <span className="font-semibold text-primary">{p.bankName}</span>}
+                            {p.bankName && p.accountDescription && <span>•</span>}
+                            {p.accountDescription && <span>{p.accountDescription}</span>}
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Right: Actions */}
+                      <div className="flex items-center gap-2 shrink-0 self-end md:self-center flex-wrap">
+                        {!p.isPrimary && p.active && (
+                          <button
+                            type="button"
+                            onClick={() => handleSetPrimaryPayment(p)}
+                            className="px-2.5 py-1.5 rounded-lg bg-surface-container hover:bg-primary hover:text-surface text-on-surface text-xs font-semibold flex items-center gap-1 transition-colors cursor-pointer"
+                            title="Definir como principal para esta empresa"
+                          >
+                            <span className="material-symbols-outlined text-[16px] text-primary-fixed-dim">
+                              star
+                            </span>
+                            <span>Tornar Principal</span>
+                          </button>
+                        )}
+
+                        <button
+                          type="button"
+                          onClick={() => handleOpenEditPayment(p)}
+                          className="px-2.5 py-1.5 rounded-lg bg-surface-container hover:bg-surface-variant text-on-surface text-xs font-semibold flex items-center gap-1 transition-colors cursor-pointer"
+                          title="Editar"
+                        >
+                          <span className="material-symbols-outlined text-[15px]">edit</span>
+                          <span>Editar</span>
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => handleTogglePaymentStatus(p)}
+                          className={`px-2.5 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1 transition-colors cursor-pointer ${
+                            p.active
+                              ? 'bg-surface-container text-on-surface-variant hover:bg-error-container hover:text-on-error-container'
+                              : 'bg-secondary-container text-on-secondary-container hover:bg-secondary hover:text-on-secondary'
+                          }`}
+                          title={p.active ? 'Desativar' : 'Ativar'}
+                        >
+                          <span className="material-symbols-outlined text-[15px]">
+                            {p.active ? 'pause_circle' : 'play_circle'}
+                          </span>
+                          <span>{p.active ? 'Desativar' : 'Ativar'}</span>
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => handleDeletePayment(p)}
+                          className="p-1.5 rounded-lg text-on-surface-variant hover:text-error hover:bg-error-container/30 transition-colors cursor-pointer"
+                          title="Excluir"
+                        >
+                          <span className="material-symbols-outlined text-[16px]">delete</span>
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* ===================================================================== */}
+          {/* SEÇÃO 3: CONFIGURAÇÃO DAS COBRANÇAS                                   */}
+          {/* ===================================================================== */}
+          <div className="bg-surface-container-lowest rounded-xl shadow-sm border border-outline-variant/30 overflow-hidden">
+            <div className="p-4 bg-surface-container-low border-b border-outline-variant/20 flex items-center gap-2">
+              <span className="material-symbols-outlined text-[20px] text-primary">
+                settings_suggest
+              </span>
+              <h2 className="font-title-md font-bold text-primary text-sm uppercase tracking-wider">
+                Configuração das Cobranças
+              </h2>
+            </div>
+
+            <div className="p-space-lg space-y-4">
+              <div>
+                <label className="block font-label-uppercase font-bold text-outline mb-1 text-[11px]">
+                  VISIBILIDADE DAS COBRANÇAS
                 </label>
-                <div className="grid grid-cols-2 gap-2">
+                <p className="text-xs text-on-surface-variant mb-3">
+                  Determina a política de distribuição e apresentação das dívidas desta empresa na carteira dos operadores autorizados.
+                </p>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {/* Opção COMPARTILHADA */}
                   <label
-                    className={`flex items-center gap-2 p-2.5 rounded-lg border cursor-pointer transition-all ${
+                    onClick={() => setModoCarteira('COMPARTILHADA')}
+                    className={`p-4 rounded-xl border-2 transition-all cursor-pointer flex items-start gap-3 ${
                       modoCarteira === 'COMPARTILHADA'
-                        ? 'bg-sky-50 border-sky-400 text-sky-900 font-semibold'
-                        : 'bg-surface-container-lowest border-outline-variant/30 text-on-surface hover:bg-surface-container-high'
+                        ? 'border-sky-600 bg-sky-50/50 shadow-sm'
+                        : 'border-outline-variant/30 bg-surface-container-low hover:bg-surface-container'
                     }`}
                   >
                     <input
@@ -797,21 +1271,28 @@ export const EmpresasView: React.FC = () => {
                       value="COMPARTILHADA"
                       checked={modoCarteira === 'COMPARTILHADA'}
                       onChange={() => setModoCarteira('COMPARTILHADA')}
-                      className="accent-primary"
+                      className="mt-1 text-sky-600 accent-sky-600"
                     />
-                    <div>
-                      <div className="text-xs">Compartilhada</div>
-                      <div className="text-[10px] font-normal text-on-surface-variant leading-tight mt-0.5">
-                        Cobranças podem ser visualizadas conjuntamente por usuários autorizados.
+                    <div className="space-y-1">
+                      <div className="flex items-center gap-2">
+                        <strong className="text-sm font-bold text-sky-900">COMPARTILHADA</strong>
+                        <span className="px-2 py-0.5 rounded bg-sky-100 text-sky-800 font-badge-sm text-[9px] font-bold uppercase">
+                          Padrão
+                        </span>
                       </div>
+                      <p className="text-xs text-on-surface leading-relaxed">
+                        As cobranças desta empresa podem aparecer junto com cobranças de outras empresas para usuários que possuem acesso a elas.
+                      </p>
                     </div>
                   </label>
 
+                  {/* Opção EXCLUSIVA */}
                   <label
-                    className={`flex items-center gap-2 p-2.5 rounded-lg border cursor-pointer transition-all ${
+                    onClick={() => setModoCarteira('EXCLUSIVA')}
+                    className={`p-4 rounded-xl border-2 transition-all cursor-pointer flex items-start gap-3 ${
                       modoCarteira === 'EXCLUSIVA'
-                        ? 'bg-purple-50 border-purple-400 text-purple-900 font-semibold'
-                        : 'bg-surface-container-lowest border-outline-variant/30 text-on-surface hover:bg-surface-container-high'
+                        ? 'border-purple-600 bg-purple-50/50 shadow-sm'
+                        : 'border-outline-variant/30 bg-surface-container-low hover:bg-surface-container'
                     }`}
                   >
                     <input
@@ -820,371 +1301,237 @@ export const EmpresasView: React.FC = () => {
                       value="EXCLUSIVA"
                       checked={modoCarteira === 'EXCLUSIVA'}
                       onChange={() => setModoCarteira('EXCLUSIVA')}
-                      className="accent-primary"
+                      className="mt-1 text-purple-600 accent-purple-600"
                     />
-                    <div>
-                      <div className="text-xs">Exclusiva</div>
-                      <div className="text-[10px] font-normal text-on-surface-variant leading-tight mt-0.5">
-                        Cobranças restritas unicamente aos operadores designados para esta empresa.
+                    <div className="space-y-1">
+                      <div className="flex items-center gap-2">
+                        <strong className="text-sm font-bold text-purple-900">EXCLUSIVA</strong>
+                        <span className="px-2 py-0.5 rounded bg-purple-100 text-purple-800 font-badge-sm text-[9px] font-bold uppercase">
+                          Restrita
+                        </span>
                       </div>
+                      <p className="text-xs text-on-surface leading-relaxed">
+                        As cobranças desta empresa ficam disponíveis somente para usuários autorizados para esta empresa.
+                      </p>
                     </div>
                   </label>
                 </div>
               </div>
-
-              {/* Status Ativo Toggle */}
-              <div className="flex items-center justify-between pt-1">
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={ativo}
-                    onChange={(e) => setAtivo(e.target.checked)}
-                    className="w-4 h-4 accent-primary rounded"
-                  />
-                  <span className="font-semibold text-on-surface text-xs">
-                    Empresa Ativa no Sistema
-                  </span>
-                </label>
-              </div>
-
-              {/* Footer Actions */}
-              <div className="pt-3 border-t border-outline-variant/20 flex items-center justify-end gap-2 shrink-0">
-                <button
-                  type="button"
-                  onClick={() => setIsEmpresaModalOpen(false)}
-                  className="px-4 py-2 rounded-lg border border-outline-variant/40 text-on-surface-variant hover:bg-surface-container transition-colors cursor-pointer"
-                >
-                  Cancelar
-                </button>
-                <button
-                  type="submit"
-                  className="px-5 py-2 bg-primary hover:bg-primary-container text-surface rounded-lg font-semibold transition-colors shadow-sm cursor-pointer"
-                >
-                  {editingEmpresaId ? 'Salvar Alterações' : 'Cadastrar Empresa'}
-                </button>
-              </div>
-            </form>
+            </div>
           </div>
-        </div>
+
+          {/* Bottom Action Bar */}
+          <div className="flex items-center justify-end gap-3 pt-2">
+            <button
+              type="button"
+              onClick={() => setViewMode('list')}
+              className="h-10 px-5 rounded-lg bg-surface-container hover:bg-surface-variant text-on-surface font-semibold text-xs transition-colors cursor-pointer"
+            >
+              Cancelar
+            </button>
+            <button
+              type="submit"
+              className="h-10 px-6 rounded-lg bg-primary hover:bg-primary-container text-surface font-semibold text-xs transition-colors shadow-sm cursor-pointer flex items-center gap-2"
+            >
+              <span className="material-symbols-outlined text-[18px]">save</span>
+              <span>Salvar Empresa</span>
+            </button>
+          </div>
+        </form>
       )}
 
-      {/* ========================================================================= */}
-      {/* MODAL: GERENCIAR DADOS DE RECEBIMENTO DA EMPRESA                          */}
-      {/* ========================================================================= */}
-      {managingPaymentsEmpresa && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-surface-scrim/40 backdrop-blur-xs animate-fadeIn">
-          <div className="w-full max-w-3xl bg-surface-container-lowest rounded-2xl shadow-2xl border border-outline-variant/30 flex flex-col max-h-[90vh] overflow-hidden">
-            {/* Header */}
-            <div className="p-space-md border-b border-outline-variant/20 flex items-center justify-between bg-surface-container-low shrink-0">
+      {/* ======================================================================= */}
+      {/* MODAL DO SUB-CRUD: ADICIONAR / EDITAR FORMA DE RECEBIMENTO               */}
+      {/* ======================================================================= */}
+      {isPaymentModalOpen && (
+        <div className="fixed inset-0 bg-primary/40 backdrop-blur-xs z-50 flex items-center justify-center p-4 animate-fade-in">
+          <div className="bg-surface-container-lowest rounded-xl shadow-2xl max-w-lg w-full border border-outline-variant/30 overflow-hidden">
+            <div className="p-4 bg-primary text-surface flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <span className="material-symbols-outlined text-primary text-[24px]">
-                  account_balance
+                <span className="material-symbols-outlined text-[20px] text-secondary-fixed">
+                  account_balance_wallet
                 </span>
-                <div>
-                  <h2 className="font-headline-sm text-headline-sm font-bold text-on-surface">
-                    Dados de Recebimento — {managingPaymentsEmpresa.nomeFantasia}
-                  </h2>
-                  <span className="text-[11px] text-on-surface-variant font-data-mono">
-                    CNPJ: {managingPaymentsEmpresa.cnpj}
-                  </span>
-                </div>
+                <h3 className="font-title-md font-bold text-sm">
+                  {editingPaymentId ? 'Editar Forma de Recebimento' : 'Nova Forma de Recebimento'}
+                </h3>
               </div>
-              <button
-                type="button"
-                onClick={() => setManagingPaymentsEmpresa(null)}
-                className="p-1 rounded-full text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high transition-colors"
-              >
-                <span className="material-symbols-outlined text-[20px]">close</span>
-              </button>
-            </div>
-
-            {/* Content */}
-            <div className="p-space-md flex-1 overflow-y-auto space-y-4">
-              <div className="flex items-center justify-between">
-                <p className="text-xs text-on-surface-variant">
-                  Chaves PIX e contas bancárias oficiais utilizadas pelos cobradores para envio ao devedor.
-                </p>
-                <button
-                  type="button"
-                  onClick={handleOpenAddPayment}
-                  className="px-3 py-1.5 bg-primary hover:bg-primary-container text-surface rounded-lg font-semibold text-xs flex items-center gap-1.5 transition-colors cursor-pointer shrink-0"
-                >
-                  <span className="material-symbols-outlined text-[16px]">add</span>
-                  <span>+ Nova Chave / Dado</span>
-                </button>
-              </div>
-
-              {/* Payment Records List */}
-              <div className="space-y-2">
-                {debtService.getCompanyPaymentData(managingPaymentsEmpresa.id).length === 0 ? (
-                  <div className="p-8 text-center text-on-surface-variant italic bg-surface-container-low rounded-xl border border-dashed border-outline-variant/40">
-                    Nenhum dado de recebimento cadastrado para esta empresa.
-                  </div>
-                ) : (
-                  debtService.getCompanyPaymentData(managingPaymentsEmpresa.id).map((item) => (
-                    <div
-                      key={item.id}
-                      className={`p-3 rounded-xl border transition-all flex items-center justify-between gap-3 ${
-                        item.isPrimary
-                          ? 'bg-primary-container/10 border-primary/40 shadow-xs'
-                          : 'bg-surface-container-low border-outline-variant/25'
-                      }`}
-                    >
-                      <div className="flex items-start gap-3 min-w-0">
-                        <div className="w-9 h-9 rounded-lg bg-surface-container-highest flex items-center justify-center text-primary shrink-0 mt-0.5">
-                          <span className="material-symbols-outlined text-[20px]">
-                            {item.type === 'PIX' ? 'qr_code_2' : 'account_balance'}
-                          </span>
-                        </div>
-                        <div className="flex flex-col min-w-0">
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <span className="font-semibold text-on-surface text-xs">
-                              {item.description}
-                            </span>
-                            {item.isPrimary && (
-                              <span className="px-1.5 py-0.2 rounded bg-primary text-surface font-badge-sm text-[9px] font-bold uppercase tracking-wider">
-                                Principal
-                              </span>
-                            )}
-                            <span
-                              className={`px-1.5 py-0.2 rounded font-badge-sm text-[9px] font-semibold ${
-                                item.active
-                                  ? 'bg-emerald-100 text-emerald-800'
-                                  : 'bg-slate-100 text-slate-600'
-                              }`}
-                            >
-                              {item.active ? 'Ativo' : 'Inativo'}
-                            </span>
-                          </div>
-
-                          <div className="flex items-center gap-2 mt-1 text-xs font-data-mono">
-                            <span className="text-outline-variant text-[11px]">Chave/Dado:</span>
-                            <strong className="text-primary truncate">
-                              {item.pixKey || item.paymentInfo}
-                            </strong>
-                            {item.pixKeyType && (
-                              <span className="text-[10px] text-on-surface-variant bg-surface-container px-1 rounded">
-                                {item.pixKeyType}
-                              </span>
-                            )}
-                          </div>
-
-                          {item.bankName && (
-                            <span className="text-[11px] text-on-surface-variant mt-0.5 truncate">
-                              {item.bankName} {item.accountDescription ? `• ${item.accountDescription}` : ''}
-                            </span>
-                          )}
-                        </div>
-                      </div>
-
-                      {/* Item Actions */}
-                      <div className="flex items-center gap-1 shrink-0">
-                        {!item.isPrimary && item.active && (
-                          <button
-                            type="button"
-                            onClick={() => {
-                              debtService.setPrimaryCompanyPaymentData(item.id);
-                              showToast('Definido como dado principal!');
-                            }}
-                            className="px-2 py-1 text-[11px] font-semibold text-primary hover:bg-surface-container-high rounded transition-colors"
-                            title="Tornar este dado o principal da empresa"
-                          >
-                            Tornar Principal
-                          </button>
-                        )}
-                        <button
-                          type="button"
-                          onClick={() => handleOpenEditPayment(item)}
-                          className="p-1 rounded text-on-surface-variant hover:text-primary hover:bg-surface-container transition-colors"
-                          title="Editar"
-                        >
-                          <span className="material-symbols-outlined text-[18px]">edit</span>
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            debtService.toggleCompanyPaymentDataStatus(item.id);
-                            showToast('Status do recebimento alterado.');
-                          }}
-                          className="p-1 rounded text-on-surface-variant hover:text-amber-700 hover:bg-surface-container transition-colors"
-                          title={item.active ? 'Desativar' : 'Ativar'}
-                        >
-                          <span className="material-symbols-outlined text-[18px]">
-                            {item.active ? 'toggle_on' : 'toggle_off'}
-                          </span>
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            if (confirm('Deseja excluir este dado de recebimento?')) {
-                              debtService.deleteCompanyPaymentData(item.id);
-                              showToast('Dado de recebimento removido.');
-                            }
-                          }}
-                          className="p-1 rounded text-on-surface-variant hover:text-error hover:bg-error-container/30 transition-colors"
-                          title="Excluir"
-                        >
-                          <span className="material-symbols-outlined text-[18px]">delete</span>
-                        </button>
-                      </div>
-                    </div>
-                  ))
-                )}
-              </div>
-            </div>
-
-            {/* Footer */}
-            <div className="p-space-md border-t border-outline-variant/20 flex justify-end bg-surface-container-low shrink-0">
-              <button
-                type="button"
-                onClick={() => setManagingPaymentsEmpresa(null)}
-                className="px-4 py-2 rounded-lg bg-surface-container-highest hover:bg-surface-container-high text-on-surface font-semibold text-xs transition-colors cursor-pointer"
-              >
-                Concluir
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* ========================================================================= */}
-      {/* SUB-MODAL: ADICIONAR / EDITAR DADO DE RECEBIMENTO                        */}
-      {/* ========================================================================= */}
-      {isPaymentModalOpen && managingPaymentsEmpresa && (
-        <div className="fixed inset-0 z-60 flex items-center justify-center p-4 bg-surface-scrim/50 backdrop-blur-xs animate-fadeIn">
-          <div className="w-full max-w-lg bg-surface-container-lowest rounded-2xl shadow-2xl border border-outline-variant/30 flex flex-col overflow-hidden">
-            <div className="p-space-md border-b border-outline-variant/20 flex items-center justify-between bg-surface-container-low">
-              <h3 className="font-title-md font-bold text-on-surface">
-                {editingPaymentId ? 'Editar Dado de Recebimento' : 'Novo Dado de Recebimento'}
-              </h3>
               <button
                 type="button"
                 onClick={() => setIsPaymentModalOpen(false)}
-                className="p-1 rounded-full text-on-surface-variant hover:text-on-surface"
+                className="text-surface hover:opacity-80 cursor-pointer p-1 rounded"
               >
-                <span className="material-symbols-outlined text-[20px]">close</span>
+                ✕
               </button>
             </div>
 
-            <form onSubmit={handleSavePayment} className="p-space-lg space-y-3 text-xs">
-              <div>
-                <label className="font-label-uppercase text-[10px] text-outline font-bold uppercase tracking-wider block mb-1">
-                  Tipo de Recebimento *
-                </label>
-                <select
-                  value={paymentType}
-                  onChange={(e) => setPaymentType(e.target.value as PaymentDataType)}
-                  className="w-full px-3 py-2 rounded-lg bg-surface-container-low border border-outline-variant/30 text-on-surface font-body-sm focus:outline-none"
-                >
-                  <option value="PIX">PIX</option>
-                  <option value="Boleto">Boleto Bancário</option>
-                  <option value="TED">TED / Transferência</option>
-                  <option value="Outro">Outro</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="font-label-uppercase text-[10px] text-outline font-bold uppercase tracking-wider block mb-1">
-                  Identificação / Descrição *
-                </label>
-                <input
-                  type="text"
-                  required
-                  value={paymentDescription}
-                  onChange={(e) => setPaymentDescription(e.target.value)}
-                  placeholder="Ex: PIX CNPJ — Conta Principal Matriz"
-                  className="w-full px-3 py-2 rounded-lg bg-surface-container-low border border-outline-variant/30 text-on-surface focus:outline-none"
-                />
-              </div>
-
-              {paymentType === 'PIX' && (
+            <form onSubmit={handleSavePayment} className="p-5 space-y-4 text-xs">
+              <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="font-label-uppercase text-[10px] text-outline font-bold uppercase tracking-wider block mb-1">
-                    Tipo de Chave PIX
+                  <label className="block font-label-uppercase font-bold text-outline mb-1 text-[10px]">
+                    MODALIDADE *
                   </label>
                   <select
-                    value={pixKeyType}
-                    onChange={(e) => setPixKeyType(e.target.value as PixKeyType)}
-                    className="w-full px-3 py-2 rounded-lg bg-surface-container-low border border-outline-variant/30 text-on-surface focus:outline-none"
+                    className="w-full h-9 px-2 bg-surface-container-low rounded-lg text-xs font-semibold text-on-surface border border-outline-variant/30 focus:outline-none"
+                    value={paymentType}
+                    onChange={(e) => setPaymentType(e.target.value as PaymentDataType)}
                   >
-                    <option value="CNPJ">CNPJ</option>
-                    <option value="CPF">CPF</option>
-                    <option value="E-mail">E-mail</option>
-                    <option value="Telefone">Telefone</option>
-                    <option value="Aleatória">Chave Aleatória (EVP)</option>
+                    <option value="PIX">PIX</option>
+                    <option value="Boleto">Boleto Bancário</option>
+                    <option value="TED">TED / Transferência</option>
                     <option value="Outro">Outro</option>
                   </select>
                 </div>
-              )}
+
+                {paymentType === 'PIX' ? (
+                  <div>
+                    <label className="block font-label-uppercase font-bold text-outline mb-1 text-[10px]">
+                      TIPO DE CHAVE PIX *
+                    </label>
+                    <select
+                      className="w-full h-9 px-2 bg-surface-container-low rounded-lg text-xs font-semibold text-on-surface border border-outline-variant/30 focus:outline-none"
+                      value={pixKeyType}
+                      onChange={(e) => setPixKeyType(e.target.value as PixKeyType)}
+                    >
+                      <option value="CNPJ">CNPJ</option>
+                      <option value="CPF">CPF</option>
+                      <option value="E-mail">E-mail</option>
+                      <option value="Telefone">Telefone</option>
+                      <option value="Aleatória">Aleatória</option>
+                      <option value="Outro">Outro</option>
+                    </select>
+                  </div>
+                ) : (
+                  <div>
+                    <label className="block font-label-uppercase font-bold text-outline mb-1 text-[10px]">
+                      MODALIDADE
+                    </label>
+                    <input
+                      type="text"
+                      disabled
+                      value={paymentType}
+                      className="w-full h-9 px-2 bg-surface-container rounded-lg text-xs text-on-surface-variant border border-outline-variant/30"
+                    />
+                  </div>
+                )}
+              </div>
 
               <div>
-                <label className="font-label-uppercase text-[10px] text-outline font-bold uppercase tracking-wider block mb-1">
-                  {paymentType === 'PIX' ? 'Chave PIX *' : 'Informação de Pagamento / Código *'}
+                <label className="block font-label-uppercase font-bold text-outline mb-1 text-[10px]">
+                  CHAVE / DADO PRINCIPAL DE PAGAMENTO *
                 </label>
                 <input
                   type="text"
                   required
+                  placeholder={
+                    paymentType === 'PIX'
+                      ? pixKeyType === 'CNPJ'
+                        ? '00.000.000/0000-00'
+                        : pixKeyType === 'CPF'
+                        ? '000.000.000-00'
+                        : pixKeyType === 'E-mail'
+                        ? 'financeiro@empresa.com.br'
+                        : pixKeyType === 'Telefone'
+                        ? '(00) 90000-0000'
+                        : 'Chave aleatória UUID'
+                      : 'Informação da conta ou linha digitável'
+                  }
                   value={pixKey}
                   onChange={(e) => setPixKey(e.target.value)}
-                  placeholder={paymentType === 'PIX' ? 'Informe a chave PIX exata' : 'Dados da conta / boleto'}
-                  className="w-full px-3 py-2 rounded-lg bg-surface-container-low border border-outline-variant/30 text-on-surface font-data-mono font-medium focus:outline-none"
+                  className="w-full h-9 px-3 bg-surface-container-low rounded-lg text-xs font-bold text-primary font-data-mono border border-outline-variant/30 focus:outline-none focus:ring-1 focus:ring-primary shadow-inner"
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-2">
+              <div>
+                <label className="block font-label-uppercase font-bold text-outline mb-1 text-[10px]">
+                  DESCRIÇÃO OU IDENTIFICAÇÃO DO DADO *
+                </label>
+                <input
+                  type="text"
+                  required
+                  placeholder="Ex: PIX Principal (CNPJ), Conta Banco Itaú"
+                  value={paymentDescription}
+                  onChange={(e) => setPaymentDescription(e.target.value)}
+                  className="w-full h-9 px-3 bg-surface-container-low rounded-lg text-xs font-semibold text-on-surface border border-outline-variant/30 focus:outline-none focus:ring-1 focus:ring-primary"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="font-label-uppercase text-[10px] text-outline font-bold uppercase tracking-wider block mb-1">
-                    Banco (Opcional)
+                  <label className="block font-label-uppercase font-bold text-outline mb-1 text-[10px]">
+                    BANCO (OPCIONAL)
                   </label>
                   <input
                     type="text"
+                    placeholder="Ex: Itaú, Bradesco, BB"
                     value={bankName}
                     onChange={(e) => setBankName(e.target.value)}
-                    placeholder="Ex: Banco Itaú (341)"
-                    className="w-full px-3 py-2 rounded-lg bg-surface-container-low border border-outline-variant/30 text-on-surface focus:outline-none"
+                    className="w-full h-9 px-3 bg-surface-container-low rounded-lg text-xs font-semibold text-on-surface border border-outline-variant/30 focus:outline-none"
                   />
                 </div>
+
                 <div>
-                  <label className="font-label-uppercase text-[10px] text-outline font-bold uppercase tracking-wider block mb-1">
-                    Agência / Conta (Opcional)
+                  <label className="block font-label-uppercase font-bold text-outline mb-1 text-[10px]">
+                    CONTA / IDENTIFICAÇÃO (OPCIONAL)
                   </label>
                   <input
                     type="text"
+                    placeholder="Ex: Ag. 0123 • C/C 45678-9"
                     value={accountDescription}
                     onChange={(e) => setAccountDescription(e.target.value)}
-                    placeholder="Ag. 1234 • C/C 5678-9"
-                    className="w-full px-3 py-2 rounded-lg bg-surface-container-low border border-outline-variant/30 text-on-surface focus:outline-none"
+                    className="w-full h-9 px-3 bg-surface-container-low rounded-lg text-xs font-semibold text-on-surface border border-outline-variant/30 focus:outline-none"
                   />
                 </div>
               </div>
 
-              <div className="flex items-center justify-between pt-2">
-                <label className="flex items-center gap-2 cursor-pointer">
+              <div className="grid grid-cols-2 gap-3 pt-2 border-t border-outline-variant/20">
+                <label className="flex items-center gap-2 cursor-pointer select-none">
+                  <input
+                    type="checkbox"
+                    checked={paymentActive}
+                    onChange={(e) => setPaymentActive(e.target.checked)}
+                    className="w-4 h-4 rounded text-primary focus:ring-primary accent-primary"
+                  />
+                  <span className="text-xs font-semibold text-on-surface">Forma Ativa</span>
+                </label>
+
+                <label className="flex items-center gap-2 cursor-pointer select-none">
                   <input
                     type="checkbox"
                     checked={isPrimaryPayment}
                     onChange={(e) => setIsPrimaryPayment(e.target.checked)}
-                    className="w-4 h-4 accent-primary rounded"
+                    className="w-4 h-4 rounded text-primary focus:ring-primary accent-primary"
                   />
-                  <span className="font-semibold text-on-surface text-xs">
-                    Definir como Dado Principal desta Empresa
+                  <span className="text-xs font-bold text-primary flex items-center gap-1">
+                    <span className="material-symbols-outlined text-[16px] text-primary">star</span>
+                    Definir como Principal
                   </span>
                 </label>
               </div>
 
-              <div className="pt-3 border-t border-outline-variant/20 flex items-center justify-end gap-2">
+              {isPrimaryPayment && (
+                <div className="p-2.5 rounded bg-surface-container-low border border-outline-variant/30 text-[11px] text-on-surface-variant flex items-start gap-2">
+                  <span className="material-symbols-outlined text-primary text-[16px] shrink-0 mt-0.5">
+                    info
+                  </span>
+                  <span>
+                    Ao marcar esta forma como principal, qualquer outra forma principal anterior desta empresa será automaticamente desmarcada, continuando ativa.
+                  </span>
+                </div>
+              )}
+
+              <div className="flex items-center justify-end gap-2 pt-3 border-t border-outline-variant/20">
                 <button
                   type="button"
                   onClick={() => setIsPaymentModalOpen(false)}
-                  className="px-4 py-2 rounded-lg border border-outline-variant/40 text-on-surface-variant hover:bg-surface-container"
+                  className="px-4 py-2 rounded-lg bg-surface-container hover:bg-surface-variant text-on-surface font-semibold text-xs transition-colors cursor-pointer"
                 >
                   Cancelar
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2 bg-primary hover:bg-primary-container text-surface rounded-lg font-semibold shadow-sm"
+                  className="px-4 py-2 rounded-lg bg-primary hover:bg-primary-container text-surface font-semibold text-xs transition-colors shadow-sm cursor-pointer"
                 >
-                  Salvar
+                  {editingPaymentId ? 'Salvar Alterações' : 'Adicionar Forma'}
                 </button>
               </div>
             </form>

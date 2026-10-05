@@ -162,6 +162,9 @@ export const UsuariosView: React.FC = () => {
     }
   };
 
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
+
   // Filtered List
   const filteredUsers = users.filter((u) => {
     const q = search.toLowerCase();
@@ -181,6 +184,9 @@ export const UsuariosView: React.FC = () => {
 
     return matchesSearch && matchesRole && matchesEmpresa;
   });
+
+  const totalPages = Math.max(1, Math.ceil(filteredUsers.length / itemsPerPage));
+  const paginatedUsers = filteredUsers.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
 
   const totalAtivos = users.filter((u) => u.ativo).length;
   const totalCobradores = users.filter((u) => u.role === 'cobrador').length;

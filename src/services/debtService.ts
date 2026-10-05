@@ -449,6 +449,24 @@ export const INITIAL_EMPRESAS: Empresa[] = [
     ativo: true,
     modoCarteira: 'COMPARTILHADA',
   },
+  {
+    id: 'emp-nordeste',
+    razaoSocial: 'Nordeste Gestão de Cobranças e Ativos S/A',
+    nomeFantasia: 'Nordeste Recuperadora',
+    cnpj: '33.456.789/0001-55',
+    inscricaoEstadual: '18.990.123-4',
+    telefone: '(81) 3421-9900',
+    email: 'financeiro@nordesterecupera.com.br',
+    cep: '50030-230',
+    endereco: 'Av. Cais do Apolo',
+    numero: '455',
+    complemento: 'Andar 8',
+    bairro: 'Bairro do Recife',
+    cidade: 'Recife',
+    estado: 'PE',
+    ativo: false,
+    modoCarteira: 'EXCLUSIVA',
+  },
 ];
 
 // Initial Users Mock
@@ -1524,6 +1542,20 @@ const INITIAL_COMPANY_PAYMENT_DATA: CompanyPaymentData[] = [
     active: true,
     isPrimary: true,
   },
+  // emp-nordeste (Nordeste Recuperadora - Inativa)
+  {
+    id: 'pay-emp-7',
+    empresaId: 'emp-nordeste',
+    type: 'PIX',
+    description: 'PIX CNPJ — Conta Operacional Regional',
+    pixKeyType: 'CNPJ',
+    pixKey: '33.456.789/0001-55',
+    paymentInfo: '33.456.789/0001-55',
+    bankName: 'Banco do Nordeste (004)',
+    accountDescription: 'Agência 0105 • C/C 99123-4 • Titular: Nordeste Recuperadora',
+    active: true,
+    isPrimary: true,
+  },
 ];
 
 // Reactive in-memory state
@@ -1810,10 +1842,10 @@ export const debtService = {
     return empresasState.filter((e) => e.ativo && user.empresasAcessoIds?.includes(e.id));
   },
 
-  addEmpresa(data: Omit<Empresa, 'id'>): Empresa {
+  addEmpresa(data: Omit<Empresa, 'id'>, customId?: string): Empresa {
     const newEmpresa: Empresa = {
       ...data,
-      id: `emp-${Date.now().toString(36)}-${Math.random().toString(36).substring(2, 6)}`,
+      id: customId || `emp-${Date.now().toString(36)}-${Math.random().toString(36).substring(2, 6)}`,
     };
     empresasState.push(newEmpresa);
     notifyListeners();
@@ -1941,24 +1973,41 @@ export const debtService = {
   },
 
   /**
-   * Retorna a agenda de trabalho diária
+   * Retorna a agenda de trabalho diária (filtrada por empresas autorizadas do usuário)
    */
-  getAgendaDoDia(): AgendaDiariaCobranca[] {
+  getAgendaDoDia(user?: User | null): AgendaDiariaCobranca[] {
     // Keep reference updated
     agendaState.forEach((item) => {
       const liveDebt = debtsState.find((d) => d.id === item.debtId);
       if (liveDebt) item.debt = liveDebt;
     });
+    if (user && user.role !== 'administrador') {
+      const allowed = user.empresasAcessoIds || [user.empresaPrincipalId];
+      return agendaState.filter((item) => {
+        const liveDebt = debtsState.find((d) => d.id === item.debtId);
+        return liveDebt ? allowed.includes(liveDebt.empresaId) : false;
+      });
+    }
     return [...agendaState];
   },
 
   /**
-   * Retorna a próxima cobrança pendente na fila diária de trabalho
+   * Retorna a próxima cobrança pendente na fila diária de trabalho respeitando o acesso de empresa
    */
-  getProximaCobrancaPendente(excludeDebtId?: string): Debt | undefined {
-    const pendenteItem = agendaState.find(
-      (a) => a.status === 'Pendente' && a.debtId !== excludeDebtId
-    );
+  getProximaCobrancaPendente(excludeDebtId?: string, user?: User | null): Debt | undefined {
+    const allowed =
+      user && user.role !== 'administrador'
+        ? user.empresasAcessoIds || [user.empresaPrincipalId]
+        : null;
+
+    const pendenteItem = agendaState.find((a) => {
+      if (a.status !== 'Pendente' || a.debtId === excludeDebtId) return false;
+      if (allowed) {
+        const d = debtsState.find((x) => x.id === a.debtId);
+        return d ? allowed.includes(d.empresaId) : false;
+      }
+      return true;
+    });
     if (!pendenteItem) return undefined;
     return debtsState.find((d) => d.id === pendenteItem.debtId);
   },
@@ -2282,15 +2331,23 @@ export const debtService = {
     };
   },
 
-  getAuditedRecords(filters?: {
-    periodFrom?: string;
-    periodTo?: string;
-    operator?: string;
-    status?: string;
-    channel?: string;
-    search?: string;
-  }) {
+  getAuditedRecords(
+    filters?: {
+      periodFrom?: string;
+      periodTo?: string;
+      operator?: string;
+      status?: string;
+      channel?: string;
+      search?: string;
+    },
+    user?: User | null
+  ) {
     let result = [...debtsState];
+
+    if (user && user.role !== 'administrador') {
+      const allowed = user.empresasAcessoIds || [user.empresaPrincipalId];
+      result = result.filter((d) => allowed.includes(d.empresaId));
+    }
 
     if (filters?.operator && filters.operator !== 'Todos os Cobradores') {
       result = result.filter((d) => d.assignedTo.name.includes(filters.operator!));
@@ -2329,26 +2386,27 @@ export const debtService = {
     return result;
   },
 
-  getSummaryMetrics() {
-    const totalDebtsCount = debtsState.length;
-    const totalDebtAmount = debtsState.reduce((acc, d) => acc + d.currentValue, 0);
+  getSummaryMetrics(user?: User | null) {
+    const list = this.getDebtsForUser(user);
+    const totalDebtsCount = list.length;
+    const totalDebtAmount = list.reduce((acc, d) => acc + d.currentValue, 0);
 
-    const paidDebts = debtsState.filter((d) => d.status === 'pago');
-    const totalRecovered = debtsState.reduce(
+    const paidDebts = list.filter((d) => d.status === 'pago');
+    const totalRecovered = list.reduce(
       (acc, d) => acc + d.payments.reduce((pAcc, p) => pAcc + p.value, 0),
       0
     );
 
-    const promisedDebts = debtsState.filter((d) => d.activePromise?.status === 'vigente');
+    const promisedDebts = list.filter((d) => d.activePromise?.status === 'vigente');
     const totalPromised = promisedDebts.reduce(
       (acc, d) => acc + (d.activePromise?.promisedValue || 0),
       0
     );
 
-    const brokenPromises = debtsState.filter((d) => d.status === 'quebrou_acordo');
+    const brokenPromises = list.filter((d) => d.status === 'quebrou_acordo');
     const brokenPromisesAmount = brokenPromises.reduce((acc, d) => acc + d.currentValue, 0);
 
-    const scheduledReturnsCount = debtsState.filter((d) => !!d.nextReturn).length;
+    const scheduledReturnsCount = list.filter((d) => !!d.nextReturn).length;
 
     return {
       totalDebtsCount,
