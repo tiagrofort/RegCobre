@@ -104,6 +104,7 @@ export const FichaCobrancaView: React.FC<FichaCobrancaViewProps> = ({
   const debtor = debtService.getDebtorById(debt.debtorId) || debtService.getAllDebtors()[0];
   const debtorDebts = debtService.getDebtsByDebtorId(debt.debtorId);
   const currentStatusStyle = getDebtStatusRowStyle(debt.status);
+  const debtEmpresa = debtService.getEmpresaById(debt.empresaId);
 
   // FAZ action mode state: whether the registration form is open/active
   const [isFazActive, setIsFazActive] = useState(false);
@@ -154,17 +155,28 @@ export const FichaCobrancaView: React.FC<FichaCobrancaViewProps> = ({
   const [isDocsExpanded, setIsDocsExpanded] = useState(true);
   const [previewDoc, setPreviewDoc] = useState<CobrancaDocumentoMock | null>(null);
 
+  // Limite de desconto da empresa para parcelas NÃO VENCIDAS
+  const maxDiscountPercent = debtEmpresa
+    ? (debtEmpresa.permitirNegociacaoNaoVencidas ? (debtEmpresa.descontoMaximoNaoVencidas ?? 5.0) : 0)
+    : 5.0;
+
   // Consolidação de Cobranças (aparece quando o mesmo devedor possuir 2 ou mais cobranças em aberto)
   const openDebtorDebts = debtorDebts.filter((d) => d.status !== 'pago');
   const canConsolidate = openDebtorDebts.length >= 2;
   const [isConsolidateModalOpen, setIsConsolidateModalOpen] = useState(false);
   const [selectedDebtIdsForConsolidation, setSelectedDebtIdsForConsolidation] = useState<string[]>([]);
+  const [concederDesconto, setConcederDesconto] = useState(false);
+  const [percentualDesconto, setPercentualDesconto] = useState<number | string>(maxDiscountPercent);
+
   const [mockConsolidation, setMockConsolidation] = useState<{
     protocol: string;
     createdAt: string;
     debtorId: string;
     debtorName: string;
     debtIds: string[];
+    totalOriginalValue?: number;
+    discountPercent?: number;
+    discountValue?: number;
     totalValue: number;
     totalDebtsCount: number;
     status: string;
@@ -175,6 +187,8 @@ export const FichaCobrancaView: React.FC<FichaCobrancaViewProps> = ({
     if (selectedDebtIdsForConsolidation.length === 0 || !selectedDebtIdsForConsolidation.every((id) => openDebtorDebts.some((d) => d.id === id))) {
       setSelectedDebtIdsForConsolidation(openDebtorDebts.map((d) => d.id));
     }
+    setConcederDesconto(false);
+    setPercentualDesconto(maxDiscountPercent);
     setIsConsolidateModalOpen(true);
   };
 
@@ -201,6 +215,20 @@ export const FichaCobrancaView: React.FC<FichaCobrancaViewProps> = ({
     0
   );
 
+  // Percentual numérico validado, estritamente limitado ao teto configurado na empresa
+  const numPercentualDesconto = Math.min(
+    maxDiscountPercent,
+    Math.max(0, parseFloat(String(percentualDesconto).replace(',', '.')) || 0)
+  );
+
+  // Valor calculado do desconto
+  const valorDescontoCalculado = concederDesconto
+    ? (totalConsolidatedValue * numPercentualDesconto) / 100
+    : 0;
+
+  // Valor final da consolidação
+  const valorFinalConsolidacao = Math.max(0, totalConsolidatedValue - valorDescontoCalculado);
+
   const handleCreateConsolidation = () => {
     if (selectedDebtIdsForConsolidation.length < 2) {
       showToast('Selecione pelo menos 2 cobranças para criar a consolidação.');
@@ -213,12 +241,23 @@ export const FichaCobrancaView: React.FC<FichaCobrancaViewProps> = ({
       debtorId: debtor.id,
       debtorName: debtor.name,
       debtIds: [...selectedDebtIdsForConsolidation],
-      totalValue: totalConsolidatedValue,
+      totalOriginalValue: totalConsolidatedValue,
+      discountPercent: concederDesconto ? numPercentualDesconto : 0,
+      discountValue: valorDescontoCalculado,
+      totalValue: valorFinalConsolidacao,
       totalDebtsCount: selectedDebtsForConsolidation.length,
       status: 'Agrupado para Negociação Conjunta',
     });
     setIsConsolidateModalOpen(false);
-    showToast(`Consolidação ${protocol} criada com sucesso! ${selectedDebtsForConsolidation.length} títulos agrupados.`);
+    if (concederDesconto && valorDescontoCalculado > 0) {
+      showToast(
+        `Consolidação ${protocol} criada com desconto de R$ ${valorDescontoCalculado.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}! Valor final: R$ ${valorFinalConsolidacao.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}.`
+      );
+    } else {
+      showToast(
+        `Consolidação ${protocol} criada com sucesso! ${selectedDebtsForConsolidation.length} títulos agrupados no valor de R$ ${totalConsolidatedValue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}.`
+      );
+    }
   };
 
   const handleDownloadMockDoc = (doc: CobrancaDocumentoMock) => {
@@ -250,6 +289,8 @@ export const FichaCobrancaView: React.FC<FichaCobrancaViewProps> = ({
     setIsVendaExpanded(false);
     setPreviewDoc(null);
     setIsConsolidateModalOpen(false);
+    setConcederDesconto(false);
+    setPercentualDesconto(maxDiscountPercent);
     if (debt) {
       setContactPerson(debt.debtorName.includes('Andrade') ? 'Dr. Marcos P. de Souza' : debtor.mainContact.name);
       const formatted = debt.currentValue.toLocaleString('pt-BR', {
@@ -276,8 +317,7 @@ export const FichaCobrancaView: React.FC<FichaCobrancaViewProps> = ({
   const activePhones = debtorPhones.filter((p) => p.active);
   const primaryPhone = activePhones[0] || null;
 
-  // Empresa Credora responsável pela cobrança
-  const debtEmpresa = debtService.getEmpresaById(debt.empresaId);
+  // Empresa Credora responsável pela cobrança (já obtida acima: debtEmpresa)
 
   // Dados de recebimento oficiais EXCLUSIVOS da EMPRESA desta cobrança
   const companyPayments: CompanyPaymentData[] = debtService.getCompanyPaymentData(debt.empresaId);
@@ -982,10 +1022,26 @@ export const FichaCobrancaView: React.FC<FichaCobrancaViewProps> = ({
                     </span>
                   </div>
                   <p className="text-xs text-on-surface-variant mt-1 leading-relaxed">
-                    Este devedor possui <strong>{mockConsolidation.totalDebtsCount} cobranças agrupadas</strong> totalizando{' '}
-                    <strong className="text-on-surface font-mono">
-                      R$ {mockConsolidation.totalValue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-                    </strong>{' '}
+                    Este devedor possui <strong>{mockConsolidation.totalDebtsCount} cobranças agrupadas</strong>
+                    {mockConsolidation.discountValue && mockConsolidation.discountValue > 0 ? (
+                      <>
+                        {' '}(Total Original:{' '}
+                        <span className="font-mono font-semibold">
+                          R$ {mockConsolidation.totalOriginalValue?.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                        </span>
+                        , com desconto de <strong className="text-emerald-700 dark:text-emerald-400">{mockConsolidation.discountPercent?.toFixed(2).replace('.', ',')}%</strong> (-R$ {mockConsolidation.discountValue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}) resultando no valor final de{' '}
+                        <strong className="text-primary font-mono font-bold">
+                          R$ {mockConsolidation.totalValue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                        </strong>
+                      </>
+                    ) : (
+                      <>
+                        {' '}totalizando{' '}
+                        <strong className="text-on-surface font-mono">
+                          R$ {mockConsolidation.totalValue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                        </strong>
+                      </>
+                    )}{' '}
                     para negociação conjunta. As cobranças individuais e seus históricos permanecem integralmente preservados para fins de auditoria.
                   </p>
                 </div>
@@ -3253,6 +3309,142 @@ export const FichaCobrancaView: React.FC<FichaCobrancaViewProps> = ({
                 })}
               </div>
 
+              {/* SEÇÃO: DESCONTO */}
+              <div className="p-4 bg-surface-container-low rounded-xl border border-outline-variant/30 flex flex-col gap-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <span className="material-symbols-outlined text-primary text-[20px]">
+                      percent
+                    </span>
+                    <h4 className="font-title-sm font-bold text-sm text-on-surface">
+                      Desconto
+                    </h4>
+                  </div>
+                  {concederDesconto && (
+                    <span className="px-2 py-0.5 rounded bg-amber-100 dark:bg-amber-950/60 text-amber-900 dark:text-amber-200 text-[10px] font-bold border border-amber-300">
+                      Limite da empresa: {maxDiscountPercent.toFixed(2).replace('.', ',')}%
+                    </span>
+                  )}
+                </div>
+
+                {/* [ ] Conceder desconto */}
+                <label className="flex items-center gap-2.5 cursor-pointer select-none">
+                  <input
+                    type="checkbox"
+                    checked={concederDesconto}
+                    onChange={(e) => {
+                      const checked = e.target.checked;
+                      setConcederDesconto(checked);
+                      if (checked && (!percentualDesconto || Number(percentualDesconto) === 0)) {
+                        setPercentualDesconto(maxDiscountPercent);
+                      }
+                    }}
+                    className="w-4 h-4 rounded text-primary accent-primary cursor-pointer"
+                  />
+                  <span className="text-xs font-bold text-on-surface">
+                    Conceder desconto
+                  </span>
+                </label>
+
+                {/* Quando desmarcado */}
+                {!concederDesconto && (
+                  <div className="text-[11px] text-on-surface-variant flex items-center justify-between pt-1 border-t border-outline-variant/15">
+                    <span>Desconto: <strong className="text-on-surface font-mono">R$ 0,00</strong></span>
+                    <span>Valor final da consolidação: <strong className="text-primary font-mono font-bold">R$ {totalConsolidatedValue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</strong></span>
+                  </div>
+                )}
+
+                {/* Quando marcado */}
+                {concederDesconto && (
+                  <div className="p-3 bg-surface-container-lowest rounded-lg border border-outline-variant/20 flex flex-col gap-3 animate-fade-in">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                      <div>
+                        <label
+                          htmlFor="percentual-desconto-input"
+                          className="block font-label-uppercase font-bold text-outline text-[11px]"
+                        >
+                          PERCENTUAL DE DESCONTO
+                        </label>
+                        <span className="text-[11px] text-on-surface-variant">
+                          Limite máximo permitido pela configuração da empresa: <strong>{maxDiscountPercent.toFixed(2).replace('.', ',')}%</strong>
+                        </span>
+                      </div>
+
+                      <div className="relative w-36 shrink-0">
+                        <input
+                          id="percentual-desconto-input"
+                          type="number"
+                          min="0"
+                          max={maxDiscountPercent}
+                          step="0.01"
+                          value={percentualDesconto}
+                          onChange={(e) => {
+                            const raw = e.target.value;
+                            if (raw === '') {
+                              setPercentualDesconto('');
+                              return;
+                            }
+                            const val = parseFloat(raw);
+                            if (val < 0) {
+                              setPercentualDesconto(0);
+                            } else if (val > maxDiscountPercent) {
+                              setPercentualDesconto(maxDiscountPercent);
+                              showToast(`O percentual não pode exceder o limite de ${maxDiscountPercent.toFixed(2).replace('.', ',')}% configurado na empresa.`);
+                            } else {
+                              setPercentualDesconto(raw);
+                            }
+                          }}
+                          placeholder="Ex: 5,00"
+                          className="w-full h-9 pl-3 pr-8 rounded-lg text-xs font-data-mono font-bold border border-outline-variant/40 bg-surface-container-lowest text-on-surface focus:outline-none focus:border-primary"
+                        />
+                        <span className="absolute right-3 top-2 text-xs font-bold text-on-surface-variant font-data-mono pointer-events-none">
+                          %
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Exibição dos cálculos do desconto */}
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-2.5 border-t border-outline-variant/15 text-xs">
+                      <div>
+                        <span className="text-[10px] text-outline font-label-uppercase font-bold block">
+                          TOTAL
+                        </span>
+                        <span className="font-data-mono font-bold text-on-surface text-sm">
+                          R$ {totalConsolidatedValue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                        </span>
+                      </div>
+                      <div>
+                        <span className="text-[10px] text-outline font-label-uppercase font-bold block">
+                          LIMITE DA EMPRESA
+                        </span>
+                        <span className="font-data-mono font-bold text-amber-700 dark:text-amber-300 text-sm">
+                          {maxDiscountPercent.toFixed(2).replace('.', ',')}%
+                        </span>
+                      </div>
+                      <div>
+                        <span className="text-[10px] text-outline font-label-uppercase font-bold block">
+                          DESCONTO INFORMADO
+                        </span>
+                        <span className="font-data-mono font-bold text-emerald-700 dark:text-emerald-400 text-sm">
+                          R$ {valorDescontoCalculado.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                        </span>
+                        <span className="text-[10px] text-on-surface-variant font-data-mono block">
+                          ({numPercentualDesconto.toFixed(2).replace('.', ',')}%)
+                        </span>
+                      </div>
+                      <div>
+                        <span className="text-[10px] text-outline font-label-uppercase font-bold block">
+                          VALOR FINAL
+                        </span>
+                        <span className="font-data-mono font-bold text-primary text-sm">
+                          R$ {valorFinalConsolidacao.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+
               {/* RESUMO NO FINAL */}
               <div className="p-4 bg-surface-container rounded-xl border border-outline-variant/30 flex flex-col sm:flex-row sm:items-center justify-between gap-3 mt-1">
                 <div>
@@ -3269,13 +3461,32 @@ export const FichaCobrancaView: React.FC<FichaCobrancaViewProps> = ({
                   )}
                 </div>
 
-                <div className="sm:text-right">
-                  <span className="text-[10px] font-label-uppercase font-bold text-outline block">
-                    VALOR TOTAL SELECIONADO
-                  </span>
-                  <span className="font-data-mono text-lg font-bold text-primary">
-                    R$ {totalConsolidatedValue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-                  </span>
+                <div className="sm:text-right flex flex-col items-start sm:items-end gap-1">
+                  <div className="text-xs text-on-surface-variant flex items-center gap-2">
+                    <span>Total dos títulos:</span>
+                    <strong className="font-data-mono text-on-surface">
+                      R$ {totalConsolidatedValue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                    </strong>
+                  </div>
+                  {concederDesconto ? (
+                    <div className="text-xs text-emerald-700 dark:text-emerald-400 flex items-center gap-2 font-semibold">
+                      <span>Desconto ({numPercentualDesconto.toFixed(2).replace('.', ',')}%):</span>
+                      <strong className="font-data-mono">
+                        - R$ {valorDescontoCalculado.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                      </strong>
+                    </div>
+                  ) : (
+                    <div className="text-xs text-on-surface-variant flex items-center gap-2">
+                      <span>Desconto:</span>
+                      <strong className="font-data-mono text-on-surface">R$ 0,00</strong>
+                    </div>
+                  )}
+                  <div className="pt-1 border-t border-outline-variant/30 flex items-center gap-2">
+                    <span className="text-xs font-bold text-outline uppercase">Valor Final:</span>
+                    <span className="font-data-mono text-xl font-bold text-primary">
+                      R$ {valorFinalConsolidacao.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                    </span>
+                  </div>
                 </div>
               </div>
             </div>
