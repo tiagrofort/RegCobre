@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { debtService } from '../services/debtService';
 import {
@@ -25,59 +25,147 @@ interface FichaCobrancaViewProps {
 }
 
 // Interface e dados mockados para Documentos da Cobrança
-interface CobrancaDocumentoMock {
+export interface CobrancaDocumentoMock {
   id: string;
+  debtId?: string;
   nomeArquivo: string;
   tipo: string;
   data: string;
+  dataHora?: string;
   usuario: string;
   tamanho: string;
   icone: string;
   corTipo: string;
+  observacao?: string;
+  fileUrl?: string;
+  fileType?: string;
 }
 
-const MOCK_DOCUMENTOS: CobrancaDocumentoMock[] = [
-  {
-    id: 'doc-1',
-    nomeArquivo: 'Boleto.pdf',
-    tipo: 'Boleto Bancário',
-    data: '28/10/2024',
-    usuario: 'Sistema ERP',
-    tamanho: '245 KB',
-    icone: 'receipt',
-    corTipo: 'bg-blue-100 text-blue-800 border-blue-200',
-  },
-  {
-    id: 'doc-2',
-    nomeArquivo: 'Comprovante_Pagamento.pdf',
-    tipo: 'Comprovante PIX / TED',
-    data: '31/10/2024',
-    usuario: 'Carlos Eduardo',
-    tamanho: '180 KB',
+export const TIPOS_DOCUMENTO = [
+  'Comprovante de pagamento',
+  'Boleto',
+  'Ficha de protesto',
+  'Carta de anuência',
+  'Documento de negociação',
+  'Contrato',
+  'Nota fiscal',
+  'Comprovante de acordo',
+  'Promissória',
+  'Termo de fiança',
+  'Outro',
+] as const;
+
+export const DOCUMENT_TYPES_CONFIG: Record<string, { icone: string; corTipo: string }> = {
+  'Comprovante de pagamento': {
     icone: 'payments',
     corTipo: 'bg-emerald-100 text-emerald-800 border-emerald-200',
   },
-  {
-    id: 'doc-3',
-    nomeArquivo: 'Ficha_Protesto.pdf',
-    tipo: 'Ficha de Protesto',
-    data: '15/10/2024',
-    usuario: 'Dr. Fernando Guimarães',
-    tamanho: '512 KB',
+  'Boleto': {
+    icone: 'receipt',
+    corTipo: 'bg-blue-100 text-blue-800 border-blue-200',
+  },
+  'Ficha de protesto': {
     icone: 'gavel',
     corTipo: 'bg-amber-100 text-amber-800 border-amber-200',
   },
-  {
-    id: 'doc-4',
-    nomeArquivo: 'Carta_Anuencia.pdf',
-    tipo: 'Carta de Anuência',
-    data: '01/11/2024',
-    usuario: 'Carlos Eduardo',
-    tamanho: '320 KB',
+  'Carta de anuência': {
     icone: 'verified',
     corTipo: 'bg-purple-100 text-purple-800 border-purple-200',
   },
-];
+  'Documento de negociação': {
+    icone: 'handshake',
+    corTipo: 'bg-indigo-100 text-indigo-800 border-indigo-200',
+  },
+  'Contrato': {
+    icone: 'description',
+    corTipo: 'bg-teal-100 text-teal-800 border-teal-200',
+  },
+  'Nota fiscal': {
+    icone: 'request_quote',
+    corTipo: 'bg-sky-100 text-sky-800 border-sky-200',
+  },
+  'Comprovante de acordo': {
+    icone: 'task_alt',
+    corTipo: 'bg-cyan-100 text-cyan-800 border-cyan-200',
+  },
+  'Promissória': {
+    icone: 'history_edu',
+    corTipo: 'bg-orange-100 text-orange-800 border-orange-200',
+  },
+  'Termo de fiança': {
+    icone: 'shield',
+    corTipo: 'bg-violet-100 text-violet-800 border-violet-200',
+  },
+  'Outro': {
+    icone: 'folder_zip',
+    corTipo: 'bg-slate-100 text-slate-800 border-slate-200',
+  },
+};
+
+// Armazenamento em memória mock dos documentos associados a cada cobrança (debtId)
+const INITIAL_DEBT_DOCUMENTS: Record<string, CobrancaDocumentoMock[]> = {};
+
+const getDocumentsForDebt = (debtId: string): CobrancaDocumentoMock[] => {
+  if (!INITIAL_DEBT_DOCUMENTS[debtId]) {
+    INITIAL_DEBT_DOCUMENTS[debtId] = [
+      {
+        id: `doc-${debtId}-1`,
+        debtId,
+        nomeArquivo: 'Boleto.pdf',
+        tipo: 'Boleto',
+        data: '28/10/2024',
+        dataHora: '28/10/2024 às 10:15',
+        usuario: 'Sistema ERP',
+        tamanho: '245 KB',
+        icone: 'receipt',
+        corTipo: 'bg-blue-100 text-blue-800 border-blue-200',
+      },
+      {
+        id: `doc-${debtId}-2`,
+        debtId,
+        nomeArquivo: 'Comprovante_Pagamento.pdf',
+        tipo: 'Comprovante de pagamento',
+        data: '31/10/2024',
+        dataHora: '31/10/2024 às 14:32',
+        usuario: 'Carlos Eduardo',
+        tamanho: '180 KB',
+        icone: 'payments',
+        corTipo: 'bg-emerald-100 text-emerald-800 border-emerald-200',
+      },
+      {
+        id: `doc-${debtId}-3`,
+        debtId,
+        nomeArquivo: 'Ficha_Protesto.pdf',
+        tipo: 'Ficha de protesto',
+        data: '15/10/2024',
+        dataHora: '15/10/2024 às 09:00',
+        usuario: 'Dr. Fernando Guimarães',
+        tamanho: '512 KB',
+        icone: 'gavel',
+        corTipo: 'bg-amber-100 text-amber-800 border-amber-200',
+      },
+      {
+        id: `doc-${debtId}-4`,
+        debtId,
+        nomeArquivo: 'Carta_Anuencia.pdf',
+        tipo: 'Carta de anuência',
+        data: '01/11/2024',
+        dataHora: '01/11/2024 às 16:45',
+        usuario: 'Carlos Eduardo',
+        tamanho: '320 KB',
+        icone: 'verified',
+        corTipo: 'bg-purple-100 text-purple-800 border-purple-200',
+      },
+    ];
+  }
+  return INITIAL_DEBT_DOCUMENTS[debtId];
+};
+
+const formatFileSize = (bytes: number): string => {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+};
 
 export const FichaCobrancaView: React.FC<FichaCobrancaViewProps> = ({
   debtId,
@@ -154,6 +242,20 @@ export const FichaCobrancaView: React.FC<FichaCobrancaViewProps> = ({
   // Documentos da Cobrança expand/collapse state (initial open) & preview modal state
   const [isDocsExpanded, setIsDocsExpanded] = useState(true);
   const [previewDoc, setPreviewDoc] = useState<CobrancaDocumentoMock | null>(null);
+  const [debtDocuments, setDebtDocuments] = useState<CobrancaDocumentoMock[]>(() =>
+    getDocumentsForDebt(debt.id)
+  );
+
+  // Modal: Anexar / Substituir Documento
+  const [isAttachModalOpen, setIsAttachModalOpen] = useState(false);
+  const [editingDoc, setEditingDoc] = useState<CobrancaDocumentoMock | null>(null);
+  const [deletingDoc, setDeletingDoc] = useState<CobrancaDocumentoMock | null>(null);
+  const [attachTipo, setAttachTipo] = useState<string>('Comprovante de pagamento');
+  const [attachFile, setAttachFile] = useState<File | null>(null);
+  const [attachObs, setAttachObs] = useState('');
+  const [attachError, setAttachError] = useState<string | null>(null);
+  const [isDraggingFile, setIsDraggingFile] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Limite de desconto da empresa para parcelas NÃO VENCIDAS
   const maxDiscountPercent = debtEmpresa
@@ -263,14 +365,19 @@ export const FichaCobrancaView: React.FC<FichaCobrancaViewProps> = ({
   const handleDownloadMockDoc = (doc: CobrancaDocumentoMock) => {
     try {
       const element = document.createElement('a');
-      const file = new Blob(
-        [
-          `REGCOBRE - DOCUMENTO OFICIAL\n\nArquivo: ${doc.nomeArquivo}\nTipo: ${doc.tipo}\nData: ${doc.data}\nAnexado por: ${doc.usuario}\nTítulo: ${debt.titleNumber}\nDevedor: ${debt.debtorName}\n\nDocumento emitido eletronicamente para fins de instrução e conferência de cobrança.`
-        ],
-        { type: 'text/plain;charset=utf-8' }
-      );
-      element.href = URL.createObjectURL(file);
-      element.download = doc.nomeArquivo;
+      if (doc.fileUrl) {
+        element.href = doc.fileUrl;
+        element.download = doc.nomeArquivo;
+      } else {
+        const file = new Blob(
+          [
+            `REGCOBRE - DOCUMENTO OFICIAL\n\nArquivo: ${doc.nomeArquivo}\nTipo: ${doc.tipo}\nData: ${doc.data}\nAnexado por: ${doc.usuario}\nTítulo: ${debt.titleNumber}\nDevedor: ${debt.debtorName}\n${doc.observacao ? `Observação: ${doc.observacao}\n` : ''}\nDocumento emitido eletronicamente para fins de instrução e conferência de cobrança.`
+          ],
+          { type: 'text/plain;charset=utf-8' }
+        );
+        element.href = URL.createObjectURL(file);
+        element.download = doc.nomeArquivo;
+      }
       document.body.appendChild(element);
       element.click();
       document.body.removeChild(element);
@@ -278,6 +385,147 @@ export const FichaCobrancaView: React.FC<FichaCobrancaViewProps> = ({
     } catch {
       showToast(`Download de "${doc.nomeArquivo}" concluído.`);
     }
+  };
+
+  const handleSelectAttachFile = (file: File) => {
+    setAttachError(null);
+    const isValidPdf =
+      file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf');
+    const isValidImage =
+      file.type.startsWith('image/') ||
+      /\.(png|jpe?g|webp|gif|bmp)$/i.test(file.name);
+
+    if (!isValidPdf && !isValidImage) {
+      setAttachError(
+        'Tipo de arquivo inválido. Permitido anexar apenas arquivos PDF e imagens (PNG, JPG, JPEG, WEBP).'
+      );
+      return;
+    }
+    setAttachFile(file);
+  };
+
+  const handleOpenNewDoc = () => {
+    setEditingDoc(null);
+    setAttachTipo('Comprovante de pagamento');
+    setAttachObs('');
+    setAttachFile(null);
+    setAttachError(null);
+    setIsAttachModalOpen(true);
+  };
+
+  const handleOpenReplaceDoc = (doc: CobrancaDocumentoMock) => {
+    setEditingDoc(doc);
+    setAttachTipo(doc.tipo);
+    setAttachObs(doc.observacao || '');
+    setAttachFile(null);
+    setAttachError(null);
+    setIsAttachModalOpen(true);
+  };
+
+  const handleConfirmDeleteDoc = (doc: CobrancaDocumentoMock) => {
+    const currentList = INITIAL_DEBT_DOCUMENTS[debt.id] || getDocumentsForDebt(debt.id);
+    const updated = currentList.filter((d) => d.id !== doc.id);
+    INITIAL_DEBT_DOCUMENTS[debt.id] = updated;
+    setDebtDocuments(updated);
+    setDeletingDoc(null);
+    showToast(`Documento "${doc.nomeArquivo}" excluído com sucesso.`);
+  };
+
+  const handleSaveAttachedDocument = () => {
+    // 1. MODO SUBSTITUIÇÃO DE DOCUMENTO EXISTENTE
+    if (editingDoc) {
+      if (!attachFile && attachObs === (editingDoc.observacao || '')) {
+        setAttachError('Selecione um novo arquivo ou altere a observação para salvar a substituição.');
+        return;
+      }
+
+      const now = new Date();
+      const dataFormatada = now.toLocaleDateString('pt-BR');
+      const horaFormatada = now.toLocaleTimeString('pt-BR', {
+        hour: '2-digit',
+        minute: '2-digit',
+      });
+      const objectUrl = attachFile ? URL.createObjectURL(attachFile) : editingDoc.fileUrl;
+
+      const updatedDoc: CobrancaDocumentoMock = {
+        ...editingDoc,
+        nomeArquivo: attachFile ? attachFile.name : editingDoc.nomeArquivo,
+        tipo: editingDoc.tipo, // Mantém o mesmo tipo de documento
+        data: dataFormatada,
+        dataHora: `${dataFormatada} às ${horaFormatada}`,
+        usuario: currentUser?.name || 'Carlos Eduardo',
+        tamanho: attachFile ? formatFileSize(attachFile.size) : editingDoc.tamanho,
+        observacao: attachObs.trim() || undefined,
+        fileUrl: objectUrl,
+        fileType: attachFile ? attachFile.type : editingDoc.fileType,
+      };
+
+      const currentList = INITIAL_DEBT_DOCUMENTS[debt.id] || getDocumentsForDebt(debt.id);
+      const updatedList = currentList.map((d) => (d.id === editingDoc.id ? updatedDoc : d));
+      INITIAL_DEBT_DOCUMENTS[debt.id] = updatedList;
+      setDebtDocuments(updatedList);
+
+      setIsAttachModalOpen(false);
+      setEditingDoc(null);
+      setAttachFile(null);
+      setAttachObs('');
+      setAttachError(null);
+
+      showToast(`Documento "${updatedDoc.nomeArquivo}" substituído com sucesso!`);
+      return;
+    }
+
+    // 2. MODO NOVO DOCUMENTO ANEXADO
+    if (!attachFile) {
+      setAttachError('Por favor, selecione um arquivo (PDF ou Imagem) para anexar.');
+      return;
+    }
+
+    const config = DOCUMENT_TYPES_CONFIG[attachTipo] || {
+      icone: 'description',
+      corTipo: 'bg-slate-100 text-slate-800 border-slate-200',
+    };
+
+    const now = new Date();
+    const dataFormatada = now.toLocaleDateString('pt-BR');
+    const horaFormatada = now.toLocaleTimeString('pt-BR', {
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+    const objectUrl = URL.createObjectURL(attachFile);
+
+    const newDoc: CobrancaDocumentoMock = {
+      id: `doc-${debt.id}-${Date.now()}`,
+      debtId: debt.id,
+      nomeArquivo: attachFile.name,
+      tipo: attachTipo,
+      data: dataFormatada,
+      dataHora: `${dataFormatada} às ${horaFormatada}`,
+      usuario: currentUser?.name || 'Carlos Eduardo',
+      tamanho: formatFileSize(attachFile.size),
+      icone: config.icone,
+      corTipo: config.corTipo,
+      observacao: attachObs.trim() || undefined,
+      fileUrl: objectUrl,
+      fileType: attachFile.type,
+    };
+
+    const currentList = INITIAL_DEBT_DOCUMENTS[debt.id] || getDocumentsForDebt(debt.id);
+    const updated = [newDoc, ...currentList];
+    INITIAL_DEBT_DOCUMENTS[debt.id] = updated;
+    setDebtDocuments(updated);
+
+    // Garante que a seção fique expandida para exibição imediata
+    setIsDocsExpanded(true);
+
+    // Reseta form e fecha modal
+    setIsAttachModalOpen(false);
+    setEditingDoc(null);
+    setAttachFile(null);
+    setAttachObs('');
+    setAttachError(null);
+
+    showToast(`Documento "${newDoc.nomeArquivo}" anexado com sucesso à cobrança!`);
   };
 
   // Reset / populate form when debtId changes
@@ -291,6 +539,13 @@ export const FichaCobrancaView: React.FC<FichaCobrancaViewProps> = ({
     setIsConsolidateModalOpen(false);
     setConcederDesconto(false);
     setPercentualDesconto(maxDiscountPercent);
+    setDebtDocuments(getDocumentsForDebt(debt.id));
+    setIsAttachModalOpen(false);
+    setEditingDoc(null);
+    setDeletingDoc(null);
+    setAttachFile(null);
+    setAttachObs('');
+    setAttachError(null);
     if (debt) {
       setContactPerson(debt.debtorName.includes('Andrade') ? 'Dr. Marcos P. de Souza' : debtor.mainContact.name);
       const formatted = debt.currentValue.toLocaleString('pt-BR', {
@@ -2156,16 +2411,30 @@ export const FichaCobrancaView: React.FC<FichaCobrancaViewProps> = ({
                 <div className="flex items-center gap-1.5 text-xs text-on-surface-variant font-data-mono flex-wrap">
                   <span className="text-outline-variant">•</span>
                   <span className="px-2 py-0.5 rounded-full bg-surface-container font-data-mono font-bold text-xs text-primary">
-                    {MOCK_DOCUMENTOS.length} Arquivos
+                    {debtDocuments.length} Arquivos
                   </span>
                   <span className="text-outline-variant hidden sm:inline">·</span>
                   <span className="text-on-surface-variant text-[11px] hidden sm:inline">
-                    Boleto, Comprovante, Protesto e Anuência
+                    Comprovantes, Boletos, Termos e Anexos
                   </span>
                 </div>
               </div>
 
               <div className="flex items-center gap-2 shrink-0">
+                {/* AÇÃO PRINCIPAL: + ANEXAR DOCUMENTO */}
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleOpenNewDoc();
+                  }}
+                  className="h-8 px-3 rounded-lg bg-primary hover:bg-primary/90 text-surface font-semibold text-xs flex items-center gap-1.5 shadow-sm transition-all cursor-pointer hover:shadow"
+                  title="Anexar documento à cobrança"
+                >
+                  <span className="material-symbols-outlined text-[16px]">add</span>
+                  <span>Anexar documento</span>
+                </button>
+
                 <span className="text-xs text-primary font-medium hidden sm:inline">
                   {isDocsExpanded ? 'Recolher' : 'Ver documentos'}
                 </span>
@@ -2184,116 +2453,193 @@ export const FichaCobrancaView: React.FC<FichaCobrancaViewProps> = ({
             {/* Conteúdo Detalhado (Expandido) */}
             {isDocsExpanded && (
               <div className="mt-space-md pt-space-md border-t border-outline-variant/20 flex flex-col gap-3">
-                <div className="overflow-x-auto rounded-lg border border-outline-variant/20">
-                  <table className="w-full text-left font-body-sm text-xs">
-                    <thead>
-                      <tr className="bg-surface-container-low text-on-surface-variant font-label-uppercase tracking-wider">
-                        <th className="py-2.5 px-3">Nome do Arquivo</th>
-                        <th className="py-2.5 px-3">Tipo</th>
-                        <th className="py-2.5 px-3">Data</th>
-                        <th className="py-2.5 px-3">Usuário que Anexou</th>
-                        <th className="py-2.5 px-3 text-right">Ações</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-outline-variant/15 bg-surface-container-lowest">
-                      {MOCK_DOCUMENTOS.map((doc) => (
-                        <tr
-                          key={doc.id}
-                          className="hover:bg-surface-container-low/60 transition-colors group"
-                        >
-                          {/* Nome do arquivo */}
-                          <td className="py-2.5 px-3">
-                            <div className="flex items-center gap-2.5">
-                              <div className="w-8 h-8 rounded-lg bg-rose-50 border border-rose-200/80 flex items-center justify-center text-rose-600 shrink-0 shadow-2xs">
-                                <span className="material-symbols-outlined text-[18px]">
-                                  picture_as_pdf
-                                </span>
-                              </div>
-                              <div className="flex flex-col min-w-0">
-                                <span className="font-semibold text-primary font-data-mono text-xs truncate group-hover:underline">
-                                  {doc.nomeArquivo}
-                                </span>
-                                <span className="text-[10px] text-on-surface-variant font-data-mono">
-                                  {doc.tamanho}
-                                </span>
-                              </div>
-                            </div>
-                          </td>
-
-                          {/* Tipo */}
-                          <td className="py-2.5 px-3">
-                            <span
-                              className={`inline-flex items-center gap-1 px-2 py-0.5 rounded font-badge-sm text-[10px] font-semibold border ${doc.corTipo}`}
-                            >
-                              <span className="material-symbols-outlined text-[12px]">
-                                {doc.icone}
-                              </span>
-                              <span>{doc.tipo}</span>
-                            </span>
-                          </td>
-
-                          {/* Data */}
-                          <td className="py-2.5 px-3 font-data-mono text-on-surface font-medium">
-                            <div className="flex items-center gap-1.5">
-                              <span className="material-symbols-outlined text-[14px] text-outline">
-                                calendar_today
-                              </span>
-                              <span>{doc.data}</span>
-                            </div>
-                          </td>
-
-                          {/* Usuário que anexou */}
-                          <td className="py-2.5 px-3">
-                            <div className="flex items-center gap-1.5">
-                              <div className="w-5 h-5 rounded-full bg-surface-container-high flex items-center justify-center text-[10px] font-bold text-primary">
-                                {doc.usuario.charAt(0)}
-                              </div>
-                              <span className="text-on-surface font-medium text-xs">
-                                {doc.usuario}
-                              </span>
-                            </div>
-                          </td>
-
-                          {/* Ações: Visualizar e Baixar */}
-                          <td className="py-2.5 px-3 text-right">
-                            <div className="flex items-center justify-end gap-1.5">
-                              <button
-                                type="button"
-                                onClick={() => setPreviewDoc(doc)}
-                                className="px-2.5 py-1 rounded-md bg-surface-container hover:bg-primary hover:text-surface text-primary font-semibold text-xs flex items-center gap-1 transition-colors cursor-pointer shadow-2xs"
-                                title={`Visualizar ${doc.nomeArquivo}`}
-                              >
-                                <span className="material-symbols-outlined text-[15px]">
-                                  visibility
-                                </span>
-                                <span>Visualizar</span>
-                              </button>
-
-                              <button
-                                type="button"
-                                onClick={() => handleDownloadMockDoc(doc)}
-                                className="px-2.5 py-1 rounded-md bg-surface-container hover:bg-secondary hover:text-on-secondary text-on-surface-variant font-semibold text-xs flex items-center gap-1 transition-colors cursor-pointer shadow-2xs"
-                                title={`Baixar ${doc.nomeArquivo}`}
-                              >
-                                <span className="material-symbols-outlined text-[15px]">
-                                  download
-                                </span>
-                                <span>Baixar</span>
-                              </button>
-                            </div>
-                          </td>
+                {debtDocuments.length === 0 ? (
+                  <div className="p-8 text-center bg-surface-container-lowest rounded-lg border border-outline-variant/20 flex flex-col items-center justify-center gap-2">
+                    <div className="w-10 h-10 rounded-full bg-surface-container flex items-center justify-center text-outline">
+                      <span className="material-symbols-outlined text-[22px]">folder_open</span>
+                    </div>
+                    <span className="text-xs font-semibold text-on-surface">
+                      Nenhum documento anexado a esta cobrança
+                    </span>
+                    <span className="text-[11px] text-on-surface-variant max-w-sm">
+                      Clique em "+ Anexar documento" para anexar comprovantes de pagamento, boletos bancários, termos de acordo ou cartas.
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => handleOpenNewDoc()}
+                      className="mt-2 h-8 px-3 rounded-lg bg-primary text-surface font-semibold text-xs flex items-center gap-1.5 cursor-pointer shadow-xs"
+                    >
+                      <span className="material-symbols-outlined text-[16px]">add</span>
+                      <span>Anexar primeiro documento</span>
+                    </button>
+                  </div>
+                ) : (
+                  <div className="overflow-x-auto rounded-lg border border-outline-variant/20">
+                    <table className="w-full text-left font-body-sm text-xs">
+                      <thead>
+                        <tr className="bg-surface-container-low text-on-surface-variant font-label-uppercase tracking-wider">
+                          <th className="py-2.5 px-3">Nome do Arquivo</th>
+                          <th className="py-2.5 px-3">Tipo</th>
+                          <th className="py-2.5 px-3">Data</th>
+                          <th className="py-2.5 px-3">Usuário que Anexou</th>
+                          <th className="py-2.5 px-3 text-right">Ações</th>
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
+                      </thead>
+                      <tbody className="divide-y divide-outline-variant/15 bg-surface-container-lowest">
+                        {debtDocuments.map((doc) => {
+                          const isImg =
+                            doc.fileType?.startsWith('image/') ||
+                            /\.(png|jpe?g|webp|gif|bmp)$/i.test(doc.nomeArquivo);
+                          const isPdf =
+                            doc.fileType === 'application/pdf' ||
+                            doc.nomeArquivo.toLowerCase().endsWith('.pdf');
+
+                          return (
+                            <tr
+                              key={doc.id}
+                              className="hover:bg-surface-container-low/60 transition-colors group"
+                            >
+                              {/* Nome do arquivo */}
+                              <td className="py-2.5 px-3">
+                                <div className="flex items-center gap-2.5">
+                                  <div
+                                    className={`w-8 h-8 rounded-lg border flex items-center justify-center shrink-0 shadow-2xs ${
+                                      isImg
+                                        ? 'bg-indigo-50 border-indigo-200/80 text-indigo-600'
+                                        : isPdf
+                                        ? 'bg-rose-50 border-rose-200/80 text-rose-600'
+                                        : 'bg-amber-50 border-amber-200/80 text-amber-600'
+                                    }`}
+                                  >
+                                    <span className="material-symbols-outlined text-[18px]">
+                                      {isImg ? 'image' : isPdf ? 'picture_as_pdf' : 'description'}
+                                    </span>
+                                  </div>
+                                  <div className="flex flex-col min-w-0">
+                                    <span className="font-semibold text-primary font-data-mono text-xs truncate group-hover:underline">
+                                      {doc.nomeArquivo}
+                                    </span>
+                                    <div className="flex items-center gap-1.5 text-[10px] text-on-surface-variant font-data-mono">
+                                      <span>{doc.tamanho}</span>
+                                      {doc.observacao && (
+                                        <>
+                                          <span className="text-outline-variant">•</span>
+                                          <span
+                                            className="text-outline truncate max-w-[200px]"
+                                            title={`Obs: ${doc.observacao}`}
+                                          >
+                                            Obs: {doc.observacao}
+                                          </span>
+                                        </>
+                                      )}
+                                    </div>
+                                  </div>
+                                </div>
+                              </td>
+
+                              {/* Tipo */}
+                              <td className="py-2.5 px-3">
+                                <span
+                                  className={`inline-flex items-center gap-1 px-2 py-0.5 rounded font-badge-sm text-[10px] font-semibold border ${doc.corTipo}`}
+                                >
+                                  <span className="material-symbols-outlined text-[12px]">
+                                    {doc.icone}
+                                  </span>
+                                  <span>{doc.tipo}</span>
+                                </span>
+                              </td>
+
+                              {/* Data */}
+                              <td className="py-2.5 px-3 font-data-mono text-on-surface font-medium">
+                                <div
+                                  className="flex items-center gap-1.5"
+                                  title={doc.dataHora || doc.data}
+                                >
+                                  <span className="material-symbols-outlined text-[14px] text-outline">
+                                    calendar_today
+                                  </span>
+                                  <span>{doc.data}</span>
+                                </div>
+                              </td>
+
+                              {/* Usuário que anexou */}
+                              <td className="py-2.5 px-3">
+                                <div className="flex items-center gap-1.5">
+                                  <div className="w-5 h-5 rounded-full bg-surface-container-high flex items-center justify-center text-[10px] font-bold text-primary">
+                                    {doc.usuario.charAt(0)}
+                                  </div>
+                                  <span className="text-on-surface font-medium text-xs">
+                                    {doc.usuario}
+                                  </span>
+                                </div>
+                              </td>
+
+                              {/* Ações: Visualizar, Baixar, Substituir e Excluir */}
+                              <td className="py-2.5 px-3 text-right">
+                                <div className="flex items-center justify-end gap-1.5 flex-wrap">
+                                  <button
+                                    type="button"
+                                    onClick={() => setPreviewDoc(doc)}
+                                    className="px-2.5 py-1 rounded-md bg-surface-container hover:bg-primary hover:text-surface text-primary font-semibold text-xs flex items-center gap-1 transition-colors cursor-pointer shadow-2xs"
+                                    title={`Visualizar ${doc.nomeArquivo}`}
+                                  >
+                                    <span className="material-symbols-outlined text-[15px]">
+                                      visibility
+                                    </span>
+                                    <span>Visualizar</span>
+                                  </button>
+
+                                  <button
+                                    type="button"
+                                    onClick={() => handleDownloadMockDoc(doc)}
+                                    className="px-2.5 py-1 rounded-md bg-surface-container hover:bg-secondary hover:text-on-secondary text-on-surface-variant font-semibold text-xs flex items-center gap-1 transition-colors cursor-pointer shadow-2xs"
+                                    title={`Baixar ${doc.nomeArquivo}`}
+                                  >
+                                    <span className="material-symbols-outlined text-[15px]">
+                                      download
+                                    </span>
+                                    <span>Baixar</span>
+                                  </button>
+
+                                  <button
+                                    type="button"
+                                    onClick={() => handleOpenReplaceDoc(doc)}
+                                    className="px-2.5 py-1 rounded-md bg-surface-container hover:bg-amber-100 hover:text-amber-900 text-on-surface-variant font-semibold text-xs flex items-center gap-1 transition-colors cursor-pointer shadow-2xs"
+                                    title={`Substituir ${doc.nomeArquivo}`}
+                                  >
+                                    <span className="material-symbols-outlined text-[15px]">
+                                      sync
+                                    </span>
+                                    <span>Substituir</span>
+                                  </button>
+
+                                  <button
+                                    type="button"
+                                    onClick={() => setDeletingDoc(doc)}
+                                    className="px-2.5 py-1 rounded-md bg-surface-container hover:bg-error/15 hover:text-error text-on-surface-variant font-semibold text-xs flex items-center gap-1 transition-colors cursor-pointer shadow-2xs"
+                                    title={`Excluir ${doc.nomeArquivo}`}
+                                  >
+                                    <span className="material-symbols-outlined text-[15px]">
+                                      delete
+                                    </span>
+                                    <span>Excluir</span>
+                                  </button>
+                                </div>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
 
                 <div className="flex items-center justify-between text-[11px] text-on-surface-variant px-1 pt-0.5">
                   <span className="flex items-center gap-1">
                     <span className="material-symbols-outlined text-[14px] text-primary">
                       info
                     </span>
-                    <span>Documentos vinculados eletronicamente à pasta judicial e extrajudicial do título.</span>
+                    <span>Documentos vinculados eletronicamente à pasta operacional do título.</span>
                   </span>
                   <span className="font-data-mono">Hash SHA-256 verificado</span>
                 </div>
@@ -3141,6 +3487,54 @@ export const FichaCobrancaView: React.FC<FichaCobrancaViewProps> = ({
                   </div>
                 )}
 
+                {/* Exibição para Imagem Anexada */}
+                {previewDoc.fileUrl &&
+                  (previewDoc.fileType?.startsWith('image/') ||
+                    /\.(png|jpe?g|webp|gif)$/i.test(previewDoc.nomeArquivo)) && (
+                    <div className="flex flex-col items-center justify-center p-3 bg-surface-container-low rounded-lg border border-outline-variant/30 gap-2">
+                      <img
+                        src={previewDoc.fileUrl}
+                        alt={previewDoc.nomeArquivo}
+                        className="max-h-[380px] max-w-full object-contain rounded shadow-xs"
+                      />
+                      <span className="text-[11px] text-on-surface-variant font-data-mono">
+                        Visualização da imagem anexada ({previewDoc.tamanho})
+                      </span>
+                    </div>
+                  )}
+
+                {/* Exibição para PDF ou outro tipo anexado sem template estático */}
+                {!['Boleto.pdf', 'Comprovante_Pagamento.pdf', 'Ficha_Protesto.pdf', 'Carta_Anuencia.pdf'].includes(
+                  previewDoc.nomeArquivo
+                ) &&
+                  !previewDoc.fileType?.startsWith('image/') && (
+                    <div className="p-4 bg-primary/5 border border-primary/20 rounded-lg space-y-2 text-xs">
+                      <div className="flex items-center gap-2 text-primary font-bold">
+                        <span className="material-symbols-outlined text-[18px]">
+                          {previewDoc.icone || 'description'}
+                        </span>
+                        <span>REGISTRO ELETRÔNICO DO DOCUMENTO ({previewDoc.tipo.toUpperCase()})</span>
+                      </div>
+                      <p className="text-on-surface-variant leading-relaxed">
+                        Arquivo autenticado e associado eletronicamente à cobrança de referência {debt.titleNumber}.
+                      </p>
+                      <div className="pt-2 border-t border-primary/15 text-[11px] font-data-mono text-on-surface-variant flex justify-between">
+                        <span>Arquivo: {previewDoc.nomeArquivo}</span>
+                        <span>Tamanho: {previewDoc.tamanho}</span>
+                      </div>
+                    </div>
+                  )}
+
+                {/* Observação anexada */}
+                {previewDoc.observacao && (
+                  <div className="p-3 bg-surface-container rounded-lg border border-outline-variant/30 text-xs">
+                    <span className="font-bold text-outline text-[11px] font-label-uppercase tracking-wider block mb-1">
+                      Observação do Documento
+                    </span>
+                    <p className="text-on-surface italic">"{previewDoc.observacao}"</p>
+                  </div>
+                )}
+
                 {/* Rodapé da Folha */}
                 <div className="pt-4 border-t border-outline-variant/30 flex items-center justify-between text-[10px] text-outline font-data-mono">
                   <span>Documento emitido para fins de conferência operacional</span>
@@ -3158,6 +3552,368 @@ export const FichaCobrancaView: React.FC<FichaCobrancaViewProps> = ({
               >
                 Fechar Visualizador
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* MODAL: ANEXAR / SUBSTITUIR DOCUMENTO À COBRANÇA                           */}
+      {/* ========================================================================= */}
+      {isAttachModalOpen && (
+        <div className="fixed inset-0 z-50 bg-inverse-surface/60 backdrop-blur-sm flex items-center justify-center p-space-md sm:p-space-xl overflow-y-auto animate-fade-in">
+          <div className="bg-surface-container-lowest w-full max-w-xl rounded-xl shadow-2xl overflow-hidden my-auto flex flex-col border border-outline-variant/30">
+            {/* Header do Modal */}
+            <div className="h-16 px-space-lg bg-primary text-surface flex items-center justify-between shrink-0">
+              <div className="flex items-center gap-space-sm min-w-0">
+                <span className="material-symbols-outlined text-secondary-fixed text-[24px]">
+                  {editingDoc ? 'sync' : 'upload_file'}
+                </span>
+                <div className="min-w-0">
+                  <h3 className="font-title-md text-title-md font-bold leading-tight truncate">
+                    {editingDoc ? 'Substituir Documento' : 'Anexar Documento à Cobrança'}
+                  </h3>
+                  <span className="font-label-uppercase text-[10px] text-surface/80 tracking-wider truncate block">
+                    {editingDoc
+                      ? `Substituindo "${editingDoc.nomeArquivo}" (${editingDoc.tipo}) • Título: ${debt.titleNumber}`
+                      : `Título: ${debt.titleNumber} • Parcela: ${debt.installment} • Devedor: ${debt.debtorName}`}
+                  </span>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setIsAttachModalOpen(false);
+                  setEditingDoc(null);
+                  setAttachFile(null);
+                  setAttachObs('');
+                  setAttachError(null);
+                }}
+                className="w-8 h-8 rounded-lg bg-surface/10 hover:bg-surface/20 text-surface flex items-center justify-center transition-colors cursor-pointer"
+                title="Fechar modal"
+              >
+                <span className="material-symbols-outlined text-[20px]">close</span>
+              </button>
+            </div>
+
+            {/* Formulário */}
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                handleSaveAttachedDocument();
+              }}
+              className="p-6 flex flex-col gap-4 text-on-surface"
+            >
+              {/* Contexto do modo substituição */}
+              {editingDoc && (
+                <div className="p-3 bg-amber-50/90 border border-amber-200/80 rounded-xl text-xs text-amber-950 flex items-start gap-2.5 shadow-2xs">
+                  <span className="material-symbols-outlined text-amber-700 text-[20px] shrink-0">sync</span>
+                  <div className="flex flex-col gap-0.5">
+                    <strong className="font-semibold text-amber-900">Substituindo Documento Existente</strong>
+                    <span className="text-amber-800 text-[11px] leading-relaxed">
+                      O documento <strong>{editingDoc.nomeArquivo}</strong> será substituído pelo novo arquivo selecionado. O tipo de documento ({editingDoc.tipo}) é mantido, e o registro de alteração será atualizado na cobrança.
+                    </span>
+                  </div>
+                </div>
+              )}
+
+              {/* 1. Tipo de documento */}
+              <div>
+                <label className="block font-label-uppercase font-bold text-outline mb-1 text-[11px]">
+                  TIPO DE DOCUMENTO{' '}
+                  {editingDoc ? (
+                    <span className="text-on-surface-variant font-normal lowercase">(mantido na substituição)</span>
+                  ) : (
+                    <span className="text-error">*</span>
+                  )}
+                </label>
+                <div className="relative">
+                  <select
+                    value={attachTipo}
+                    onChange={(e) => setAttachTipo(e.target.value)}
+                    disabled={!!editingDoc}
+                    className={`w-full h-10 px-3 pr-8 rounded-lg text-xs font-semibold text-on-surface border border-outline-variant/40 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary ${
+                      editingDoc
+                        ? 'bg-surface-container-high/60 cursor-not-allowed opacity-80'
+                        : 'bg-surface-container-low cursor-pointer'
+                    }`}
+                  >
+                    {TIPOS_DOCUMENTO.map((tipo) => (
+                      <option key={tipo} value={tipo}>
+                        {tipo}
+                      </option>
+                    ))}
+                  </select>
+                  {!editingDoc && (
+                    <span className="pointer-events-none absolute right-2.5 top-2.5 text-on-surface-variant material-symbols-outlined text-[18px]">
+                      arrow_drop_down
+                    </span>
+                  )}
+                </div>
+
+                {/* Nota contextual sobre Boleto e Carta de Anuência */}
+                {attachTipo === 'Boleto' && (
+                  <p className="mt-1.5 text-[11px] text-blue-900 bg-blue-50/80 p-2 rounded-lg border border-blue-200/60 flex items-start gap-1.5">
+                    <span className="material-symbols-outlined text-[16px] text-blue-600 shrink-0">info</span>
+                    <span>
+                      <strong>Nota:</strong> O boleto não é gerado pelo sistema. Deve ser anexado após emissão pelo banco parceiro.
+                    </span>
+                  </p>
+                )}
+
+                {attachTipo === 'Carta de anuência' && (
+                  <p className="mt-1.5 text-[11px] text-purple-900 bg-purple-50/80 p-2 rounded-lg border border-purple-200/60 flex items-start gap-1.5">
+                    <span className="material-symbols-outlined text-[16px] text-purple-600 shrink-0">info</span>
+                    <span>
+                      <strong>Nota:</strong> Nesta etapa, o termo/anuência deve ser anexado via upload de arquivo.
+                    </span>
+                  </p>
+                )}
+              </div>
+
+              {/* 2. Arquivo (PDF ou Imagem) */}
+              <div>
+                <label className="block font-label-uppercase font-bold text-outline mb-1 text-[11px]">
+                  {editingDoc ? 'NOVO ARQUIVO DE SUBSTITUIÇÃO' : 'ARQUIVO (PDF OU IMAGEM)'}{' '}
+                  <span className="text-error">*</span>
+                </label>
+
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept=".pdf,image/png,image/jpeg,image/jpg,image/webp,application/pdf"
+                  className="hidden"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) handleSelectAttachFile(file);
+                  }}
+                />
+
+                {attachFile ? (
+                  <div className="p-3.5 bg-surface-container-low border border-primary/30 rounded-xl flex items-center justify-between gap-3 shadow-2xs">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div
+                        className={`w-10 h-10 rounded-lg flex items-center justify-center shrink-0 shadow-2xs ${
+                          attachFile.type.startsWith('image/') || /\.(png|jpe?g|webp|gif)$/i.test(attachFile.name)
+                            ? 'bg-indigo-50 border border-indigo-200/80 text-indigo-600'
+                            : 'bg-rose-50 border border-rose-200/80 text-rose-600'
+                        }`}
+                      >
+                        <span className="material-symbols-outlined text-[22px]">
+                          {attachFile.type.startsWith('image/') || /\.(png|jpe?g|webp|gif)$/i.test(attachFile.name)
+                            ? 'image'
+                            : 'picture_as_pdf'}
+                        </span>
+                      </div>
+                      <div className="flex flex-col min-w-0">
+                        <span className="text-xs font-bold text-primary truncate font-data-mono">
+                          {attachFile.name}
+                        </span>
+                        <span className="text-[11px] text-on-surface-variant font-data-mono">
+                          {formatFileSize(attachFile.size)} • {attachFile.type || 'Novo arquivo selecionado'}
+                        </span>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      <button
+                        type="button"
+                        onClick={() => fileInputRef.current?.click()}
+                        className="px-2.5 py-1 text-xs font-semibold text-primary hover:bg-primary/10 rounded-md transition-colors cursor-pointer"
+                        title="Substituir arquivo selecionado"
+                      >
+                        Alterar
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setAttachFile(null);
+                          if (fileInputRef.current) fileInputRef.current.value = '';
+                        }}
+                        className="p-1 text-on-surface-variant hover:text-error hover:bg-error/10 rounded-md transition-colors cursor-pointer"
+                        title="Remover arquivo"
+                      >
+                        <span className="material-symbols-outlined text-[18px]">close</span>
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div
+                    onClick={() => fileInputRef.current?.click()}
+                    onDragOver={(e) => {
+                      e.preventDefault();
+                      setIsDraggingFile(true);
+                    }}
+                    onDragLeave={() => setIsDraggingFile(false)}
+                    onDrop={(e) => {
+                      e.preventDefault();
+                      setIsDraggingFile(false);
+                      if (e.dataTransfer.files?.[0]) {
+                        handleSelectAttachFile(e.dataTransfer.files[0]);
+                      }
+                    }}
+                    className={`p-6 border-2 border-dashed rounded-xl flex flex-col items-center justify-center gap-2 cursor-pointer transition-all text-center ${
+                      isDraggingFile
+                        ? 'border-primary bg-primary/5'
+                        : 'border-outline-variant/50 hover:border-primary hover:bg-surface-container-low/60 bg-surface-container-lowest'
+                    }`}
+                  >
+                    <div className="w-11 h-11 rounded-full bg-surface-container flex items-center justify-center text-primary shadow-2xs">
+                      <span className="material-symbols-outlined text-[24px]">cloud_upload</span>
+                    </div>
+                    <div>
+                      <span className="text-xs font-bold text-primary block">
+                        {editingDoc
+                          ? `Clique para escolher o novo arquivo para substituir "${editingDoc.nomeArquivo}"`
+                          : 'Clique para escolher o arquivo ou arraste até aqui'}
+                      </span>
+                      <span className="text-[11px] text-on-surface-variant block mt-0.5 font-data-mono">
+                        Formatos aceitos: PDF e Imagens (PNG, JPG, JPEG, WEBP)
+                      </span>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* 3. Observação (opcional) */}
+              <div>
+                <label className="block font-label-uppercase font-bold text-outline mb-1 text-[11px]">
+                  OBSERVAÇÃO <span className="text-on-surface-variant font-normal lowercase">(opcional)</span>
+                </label>
+                <textarea
+                  rows={2}
+                  value={attachObs}
+                  onChange={(e) => setAttachObs(e.target.value)}
+                  placeholder="Ex: Comprovante de quitação parcial, enviado pelo devedor via WhatsApp..."
+                  className="w-full px-3 py-2 bg-surface-container-low rounded-lg text-xs text-on-surface border border-outline-variant/40 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary resize-none placeholder:text-outline"
+                />
+              </div>
+
+              {/* Box de contexto e auditoria */}
+              <div className="p-3 bg-surface-container-low rounded-lg border border-outline-variant/30 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-[11px] text-on-surface-variant font-data-mono">
+                <div className="flex items-center gap-1.5">
+                  <span className="material-symbols-outlined text-[15px] text-primary">account_circle</span>
+                  <span>Operador: <strong className="text-on-surface">{currentUser?.name || 'Carlos Eduardo'}</strong></span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <span className="material-symbols-outlined text-[15px] text-outline">calendar_today</span>
+                  <span>Data: <strong className="text-on-surface">{new Date().toLocaleDateString('pt-BR')}</strong></span>
+                </div>
+              </div>
+
+              {/* Erro de validação */}
+              {attachError && (
+                <div className="p-2.5 bg-error/10 border border-error/30 text-error text-xs rounded-lg flex items-center gap-2">
+                  <span className="material-symbols-outlined text-[18px]">error</span>
+                  <span>{attachError}</span>
+                </div>
+              )}
+
+              {/* Footer do Modal */}
+              <div className="pt-3 border-t border-outline-variant/20 flex items-center justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsAttachModalOpen(false);
+                    setEditingDoc(null);
+                    setAttachFile(null);
+                    setAttachObs('');
+                    setAttachError(null);
+                  }}
+                  className="h-9 px-4 rounded-lg bg-surface-container hover:bg-surface-variant text-on-surface font-semibold text-xs transition-colors cursor-pointer"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  disabled={editingDoc ? !attachFile && attachObs === (editingDoc.observacao || '') : !attachFile}
+                  className={`h-9 px-5 rounded-lg font-semibold text-xs flex items-center gap-1.5 transition-all shadow-sm ${
+                    (editingDoc ? attachFile || attachObs !== (editingDoc.observacao || '') : attachFile)
+                      ? 'bg-primary hover:bg-primary-container text-surface cursor-pointer'
+                      : 'bg-surface-container-high text-outline cursor-not-allowed opacity-60'
+                  }`}
+                >
+                  <span className="material-symbols-outlined text-[16px]">
+                    {editingDoc ? 'sync' : 'check'}
+                  </span>
+                  <span>{editingDoc ? 'Salvar Substituição' : 'Salvar Documento'}</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* MODAL: CONFIRMAÇÃO DE EXCLUSÃO DE DOCUMENTO                               */}
+      {/* ========================================================================= */}
+      {deletingDoc && (
+        <div className="fixed inset-0 z-50 bg-inverse-surface/60 backdrop-blur-sm flex items-center justify-center p-space-md overflow-y-auto animate-fade-in">
+          <div className="bg-surface-container-lowest w-full max-w-md rounded-xl shadow-2xl overflow-hidden my-auto flex flex-col border border-outline-variant/30">
+            {/* Header e Conteúdo de Confirmação */}
+            <div className="p-6 flex flex-col gap-4 text-on-surface">
+              <div className="flex items-start gap-3">
+                <div className="w-10 h-10 rounded-full bg-error/10 text-error flex items-center justify-center shrink-0">
+                  <span className="material-symbols-outlined text-[24px]">delete_forever</span>
+                </div>
+                <div>
+                  <h3 className="font-title-md text-title-md font-bold text-on-surface">
+                    Excluir Documento
+                  </h3>
+                  <p className="text-xs text-on-surface-variant mt-1">
+                    Deseja realmente excluir este documento?
+                  </p>
+                </div>
+              </div>
+
+              {/* Informações do arquivo a excluir */}
+              <div className="p-3 bg-surface-container-low rounded-lg border border-outline-variant/30 flex items-center gap-3">
+                <div
+                  className={`w-9 h-9 rounded-lg border flex items-center justify-center shrink-0 shadow-2xs ${
+                    deletingDoc.fileType?.startsWith('image/') ||
+                    /\.(png|jpe?g|webp|gif)$/i.test(deletingDoc.nomeArquivo)
+                      ? 'bg-indigo-50 border-indigo-200/80 text-indigo-600'
+                      : 'bg-rose-50 border-rose-200/80 text-rose-600'
+                  }`}
+                >
+                  <span className="material-symbols-outlined text-[20px]">
+                    {deletingDoc.fileType?.startsWith('image/') ||
+                    /\.(png|jpe?g|webp|gif)$/i.test(deletingDoc.nomeArquivo)
+                      ? 'image'
+                      : 'picture_as_pdf'}
+                  </span>
+                </div>
+                <div className="flex flex-col min-w-0">
+                  <strong className="text-xs font-bold text-on-surface truncate font-data-mono">
+                    {deletingDoc.nomeArquivo}
+                  </strong>
+                  <span className="text-[11px] text-on-surface-variant font-data-mono">
+                    {deletingDoc.tipo} • {deletingDoc.tamanho}
+                  </span>
+                </div>
+              </div>
+
+              <p className="text-[11px] text-on-surface-variant leading-relaxed">
+                Esta ação removerá o documento da lista desta cobrança. O histórico individual e os dados da cobrança permanecerão preservados.
+              </p>
+
+              {/* Footer com botões [Cancelar] e [Excluir documento] */}
+              <div className="pt-2 border-t border-outline-variant/20 flex items-center justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => setDeletingDoc(null)}
+                  className="h-9 px-4 rounded-lg bg-surface-container hover:bg-surface-variant text-on-surface font-semibold text-xs transition-colors cursor-pointer"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleConfirmDeleteDoc(deletingDoc)}
+                  className="h-9 px-4 rounded-lg bg-error hover:bg-error/90 text-on-error font-semibold text-xs flex items-center gap-1.5 transition-colors cursor-pointer shadow-sm"
+                >
+                  <span className="material-symbols-outlined text-[16px]">delete</span>
+                  <span>Excluir documento</span>
+                </button>
+              </div>
             </div>
           </div>
         </div>
