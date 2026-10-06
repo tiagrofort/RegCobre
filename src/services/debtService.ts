@@ -412,6 +412,10 @@ export const INITIAL_EMPRESAS: Empresa[] = [
     estado: 'SP',
     ativo: true,
     modoCarteira: 'COMPARTILHADA',
+    permitirNegociacaoNaoVencidas: true,
+    descontoMaximoNaoVencidas: 5.0,
+    permitirDescontoVencidos: true,
+    descontoMaximoVencidos: 10.0,
   },
   {
     id: 'emp-sul',
@@ -430,6 +434,10 @@ export const INITIAL_EMPRESAS: Empresa[] = [
     estado: 'PR',
     ativo: true,
     modoCarteira: 'EXCLUSIVA',
+    permitirNegociacaoNaoVencidas: false,
+    descontoMaximoNaoVencidas: 0,
+    permitirDescontoVencidos: true,
+    descontoMaximoVencidos: 5.0,
   },
   {
     id: 'emp-norte',
@@ -448,6 +456,10 @@ export const INITIAL_EMPRESAS: Empresa[] = [
     estado: 'AM',
     ativo: true,
     modoCarteira: 'COMPARTILHADA',
+    permitirNegociacaoNaoVencidas: true,
+    descontoMaximoNaoVencidas: 3.5,
+    permitirDescontoVencidos: false,
+    descontoMaximoVencidos: 0,
   },
   {
     id: 'emp-nordeste',
@@ -466,6 +478,10 @@ export const INITIAL_EMPRESAS: Empresa[] = [
     estado: 'PE',
     ativo: false,
     modoCarteira: 'EXCLUSIVA',
+    permitirNegociacaoNaoVencidas: false,
+    descontoMaximoNaoVencidas: 0,
+    permitirDescontoVencidos: false,
+    descontoMaximoVencidos: 0,
   },
 ];
 
@@ -1961,7 +1977,7 @@ export const debtService = {
     return user.empresasAcessoIds?.includes(debt.empresaId) ?? false;
   },
 
-  getDebtsForUser(user: User | null, empresaFilter?: string | 'all'): Debt[] {
+  getDebtsForUser(user?: User | null, empresaFilter?: string | 'all'): Debt[] {
     let list = debtsState;
     if (user && user.role !== 'administrador') {
       list = list.filter((d) => user.empresasAcessoIds?.includes(d.empresaId));

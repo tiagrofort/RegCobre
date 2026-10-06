@@ -96,6 +96,11 @@ export interface Empresa {
   ativo: boolean;
   modoCarteira: ModoCarteiraEmpresa;
   dadosRecebimento?: CompanyPaymentData[];
+  // Regras de Negociação e Consolidação
+  permitirNegociacaoNaoVencidas?: boolean;
+  descontoMaximoNaoVencidas?: number;
+  permitirDescontoVencidos?: boolean;
+  descontoMaximoVencidos?: number;
 }
 
 export interface Debtor {

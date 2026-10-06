@@ -24,6 +24,61 @@ interface FichaCobrancaViewProps {
   onOpenFastLog?: (debt?: Debt) => void;
 }
 
+// Interface e dados mockados para Documentos da Cobrança
+interface CobrancaDocumentoMock {
+  id: string;
+  nomeArquivo: string;
+  tipo: string;
+  data: string;
+  usuario: string;
+  tamanho: string;
+  icone: string;
+  corTipo: string;
+}
+
+const MOCK_DOCUMENTOS: CobrancaDocumentoMock[] = [
+  {
+    id: 'doc-1',
+    nomeArquivo: 'Boleto.pdf',
+    tipo: 'Boleto Bancário',
+    data: '28/10/2024',
+    usuario: 'Sistema ERP',
+    tamanho: '245 KB',
+    icone: 'receipt',
+    corTipo: 'bg-blue-100 text-blue-800 border-blue-200',
+  },
+  {
+    id: 'doc-2',
+    nomeArquivo: 'Comprovante_Pagamento.pdf',
+    tipo: 'Comprovante PIX / TED',
+    data: '31/10/2024',
+    usuario: 'Carlos Eduardo',
+    tamanho: '180 KB',
+    icone: 'payments',
+    corTipo: 'bg-emerald-100 text-emerald-800 border-emerald-200',
+  },
+  {
+    id: 'doc-3',
+    nomeArquivo: 'Ficha_Protesto.pdf',
+    tipo: 'Ficha de Protesto',
+    data: '15/10/2024',
+    usuario: 'Dr. Fernando Guimarães',
+    tamanho: '512 KB',
+    icone: 'gavel',
+    corTipo: 'bg-amber-100 text-amber-800 border-amber-200',
+  },
+  {
+    id: 'doc-4',
+    nomeArquivo: 'Carta_Anuencia.pdf',
+    tipo: 'Carta de Anuência',
+    data: '01/11/2024',
+    usuario: 'Carlos Eduardo',
+    tamanho: '320 KB',
+    icone: 'verified',
+    corTipo: 'bg-purple-100 text-purple-800 border-purple-200',
+  },
+];
+
 export const FichaCobrancaView: React.FC<FichaCobrancaViewProps> = ({
   debtId,
   originScreen,
@@ -95,6 +150,97 @@ export const FichaCobrancaView: React.FC<FichaCobrancaViewProps> = ({
   // Venda & Parcelamento expand/collapse state (initial closed)
   const [isVendaExpanded, setIsVendaExpanded] = useState(false);
 
+  // Documentos da Cobrança expand/collapse state (initial open) & preview modal state
+  const [isDocsExpanded, setIsDocsExpanded] = useState(true);
+  const [previewDoc, setPreviewDoc] = useState<CobrancaDocumentoMock | null>(null);
+
+  // Consolidação de Cobranças (aparece quando o mesmo devedor possuir 2 ou mais cobranças em aberto)
+  const openDebtorDebts = debtorDebts.filter((d) => d.status !== 'pago');
+  const canConsolidate = openDebtorDebts.length >= 2;
+  const [isConsolidateModalOpen, setIsConsolidateModalOpen] = useState(false);
+  const [selectedDebtIdsForConsolidation, setSelectedDebtIdsForConsolidation] = useState<string[]>([]);
+  const [mockConsolidation, setMockConsolidation] = useState<{
+    protocol: string;
+    createdAt: string;
+    debtorId: string;
+    debtorName: string;
+    debtIds: string[];
+    totalValue: number;
+    totalDebtsCount: number;
+    status: string;
+  } | null>(null);
+
+  const handleOpenConsolidateModal = () => {
+    // Pré-selecionar todas as cobranças em aberto se nenhuma estiver selecionada
+    if (selectedDebtIdsForConsolidation.length === 0 || !selectedDebtIdsForConsolidation.every((id) => openDebtorDebts.some((d) => d.id === id))) {
+      setSelectedDebtIdsForConsolidation(openDebtorDebts.map((d) => d.id));
+    }
+    setIsConsolidateModalOpen(true);
+  };
+
+  const toggleDebtSelectionForConsolidation = (id: string) => {
+    setSelectedDebtIdsForConsolidation((prev) =>
+      prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]
+    );
+  };
+
+  const handleToggleSelectAllConsolidation = () => {
+    if (selectedDebtIdsForConsolidation.length === openDebtorDebts.length) {
+      setSelectedDebtIdsForConsolidation([]);
+    } else {
+      setSelectedDebtIdsForConsolidation(openDebtorDebts.map((d) => d.id));
+    }
+  };
+
+  const selectedDebtsForConsolidation = openDebtorDebts.filter((d) =>
+    selectedDebtIdsForConsolidation.includes(d.id)
+  );
+
+  const totalConsolidatedValue = selectedDebtsForConsolidation.reduce(
+    (acc, d) => acc + d.currentValue,
+    0
+  );
+
+  const handleCreateConsolidation = () => {
+    if (selectedDebtIdsForConsolidation.length < 2) {
+      showToast('Selecione pelo menos 2 cobranças para criar a consolidação.');
+      return;
+    }
+    const protocol = `CNS-2024-${Math.floor(1000 + Math.random() * 9000)}`;
+    setMockConsolidation({
+      protocol,
+      createdAt: new Date().toLocaleDateString('pt-BR') + ' às ' + new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
+      debtorId: debtor.id,
+      debtorName: debtor.name,
+      debtIds: [...selectedDebtIdsForConsolidation],
+      totalValue: totalConsolidatedValue,
+      totalDebtsCount: selectedDebtsForConsolidation.length,
+      status: 'Agrupado para Negociação Conjunta',
+    });
+    setIsConsolidateModalOpen(false);
+    showToast(`Consolidação ${protocol} criada com sucesso! ${selectedDebtsForConsolidation.length} títulos agrupados.`);
+  };
+
+  const handleDownloadMockDoc = (doc: CobrancaDocumentoMock) => {
+    try {
+      const element = document.createElement('a');
+      const file = new Blob(
+        [
+          `REGCOBRE - DOCUMENTO OFICIAL\n\nArquivo: ${doc.nomeArquivo}\nTipo: ${doc.tipo}\nData: ${doc.data}\nAnexado por: ${doc.usuario}\nTítulo: ${debt.titleNumber}\nDevedor: ${debt.debtorName}\n\nDocumento emitido eletronicamente para fins de instrução e conferência de cobrança.`
+        ],
+        { type: 'text/plain;charset=utf-8' }
+      );
+      element.href = URL.createObjectURL(file);
+      element.download = doc.nomeArquivo;
+      document.body.appendChild(element);
+      element.click();
+      document.body.removeChild(element);
+      showToast(`Download de "${doc.nomeArquivo}" iniciado com sucesso!`);
+    } catch {
+      showToast(`Download de "${doc.nomeArquivo}" concluído.`);
+    }
+  };
+
   // Reset / populate form when debtId changes
   useEffect(() => {
     setIsFazActive(false);
@@ -102,6 +248,8 @@ export const FichaCobrancaView: React.FC<FichaCobrancaViewProps> = ({
     setIsPhoneDropdownOpen(false);
     setIsPaymentDropdownOpen(false);
     setIsVendaExpanded(false);
+    setPreviewDoc(null);
+    setIsConsolidateModalOpen(false);
     if (debt) {
       setContactPerson(debt.debtorName.includes('Andrade') ? 'Dr. Marcos P. de Souza' : debtor.mainContact.name);
       const formatted = debt.currentValue.toLocaleString('pt-BR', {
@@ -609,6 +757,32 @@ export const FichaCobrancaView: React.FC<FichaCobrancaViewProps> = ({
               )}
             </div>
 
+            {/* AÇÃO: CONSOLIDAR COBRANÇAS (Exibida quando o mesmo devedor possuir 2 ou mais cobranças em aberto) */}
+            {canConsolidate && (
+              <button
+                type="button"
+                onClick={handleOpenConsolidateModal}
+                className={`h-9 px-3 rounded-lg shadow-2xs font-label-uppercase text-xs tracking-wider inline-flex items-center gap-1.5 transition-all cursor-pointer border ${
+                  mockConsolidation && mockConsolidation.debtorId === debtor.id
+                    ? 'bg-amber-100 hover:bg-amber-200 text-amber-900 border-amber-400 font-bold'
+                    : 'bg-surface-container-lowest hover:bg-amber-500/10 text-amber-800 border-amber-500/40'
+                }`}
+                title={`Este devedor possui ${openDebtorDebts.length} cobranças em aberto. Clique para abrir a consolidação.`}
+              >
+                <span className="material-symbols-outlined text-[17px] text-amber-600">
+                  {mockConsolidation && mockConsolidation.debtorId === debtor.id ? 'task_alt' : 'merge_type'}
+                </span>
+                <span>
+                  {mockConsolidation && mockConsolidation.debtorId === debtor.id
+                    ? 'Cobranças Consolidadas'
+                    : 'Consolidar Cobranças'}
+                </span>
+                <span className="px-1.5 py-0.2 rounded-full bg-amber-600 text-white text-[10px] font-bold">
+                  {openDebtorDebts.length}
+                </span>
+              </button>
+            )}
+
             <button
               onClick={() => window.print()}
               className="h-9 px-3 bg-surface-container-lowest hover:bg-surface-container text-on-surface rounded-lg shadow-2xs font-label-uppercase text-xs tracking-wider inline-flex items-center gap-1.5 transition-colors cursor-pointer border border-outline-variant/30"
@@ -784,6 +958,63 @@ export const FichaCobrancaView: React.FC<FichaCobrancaViewProps> = ({
             </div>
           </div>
         </div>
+
+        {/* ========================================================================= */}
+        {/* BANNER DE COBRANÇAS CONSOLIDADAS (SIMULAÇÃO MOCK)                          */}
+        {/* ========================================================================= */}
+        {mockConsolidation && mockConsolidation.debtorId === debtor.id && (
+          <div className="p-4 bg-gradient-to-r from-amber-500/15 via-amber-500/5 to-transparent border border-amber-500/30 rounded-xl shadow-xs animate-fade-in">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
+              <div className="flex items-start gap-3">
+                <div className="p-2 bg-amber-500/20 text-amber-700 dark:text-amber-300 rounded-lg shrink-0 mt-0.5">
+                  <span className="material-symbols-outlined text-[24px]">merge_type</span>
+                </div>
+                <div>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="font-title-md font-bold text-sm text-on-surface">
+                      Consolidação de Cobranças em Andamento
+                    </span>
+                    <span className="px-2 py-0.5 rounded-full bg-amber-600 text-white font-mono text-[10px] font-bold">
+                      {mockConsolidation.protocol}
+                    </span>
+                    <span className="px-2 py-0.5 rounded bg-amber-100 dark:bg-amber-950/60 text-amber-900 dark:text-amber-200 text-[10px] font-semibold border border-amber-300">
+                      {mockConsolidation.status}
+                    </span>
+                  </div>
+                  <p className="text-xs text-on-surface-variant mt-1 leading-relaxed">
+                    Este devedor possui <strong>{mockConsolidation.totalDebtsCount} cobranças agrupadas</strong> totalizando{' '}
+                    <strong className="text-on-surface font-mono">
+                      R$ {mockConsolidation.totalValue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                    </strong>{' '}
+                    para negociação conjunta. As cobranças individuais e seus históricos permanecem integralmente preservados para fins de auditoria.
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2 self-end md:self-center shrink-0">
+                <button
+                  type="button"
+                  onClick={() => setIsConsolidateModalOpen(true)}
+                  className="px-3 py-1.5 rounded-lg bg-surface-container hover:bg-surface-container-high text-xs font-semibold text-on-surface border border-outline-variant/30 transition-colors cursor-pointer inline-flex items-center gap-1"
+                >
+                  <span className="material-symbols-outlined text-[15px]">list</span>
+                  <span>Ver / Editar Agrupamento</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMockConsolidation(null);
+                    showToast('Consolidação simulada desfeita com sucesso.');
+                  }}
+                  className="px-3 py-1.5 rounded-lg bg-surface-container hover:bg-error/10 text-xs font-semibold text-error border border-error/20 transition-colors cursor-pointer inline-flex items-center gap-1"
+                  title="Desfazer a simulação desta consolidação"
+                >
+                  <span className="material-symbols-outlined text-[15px]">close</span>
+                  <span>Desfazer</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* ========================================================================= */}
         {/* B) RESUMO DA COBRANÇA (ÁREA COMPACTA)                                     */}
@@ -1840,6 +2071,181 @@ export const FichaCobrancaView: React.FC<FichaCobrancaViewProps> = ({
           })()}
 
           {/* ===================================================================== */}
+          {/* SEÇÃO RECOLHÍVEL: DOCUMENTOS DA COBRANÇA                              */}
+          {/* ===================================================================== */}
+          <div className="p-space-lg bg-surface-container-lowest rounded-xl shadow-sm flex flex-col border border-outline-variant/30 transition-all">
+            {/* Header Recolhível */}
+            <div
+              onClick={() => setIsDocsExpanded(!isDocsExpanded)}
+              className="flex items-center justify-between cursor-pointer select-none group"
+              role="button"
+              tabIndex={0}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault();
+                  setIsDocsExpanded(!isDocsExpanded);
+                }
+              }}
+              aria-expanded={isDocsExpanded}
+            >
+              <div className="flex items-center gap-space-xs flex-wrap min-w-0">
+                <span className="material-symbols-outlined text-primary text-[22px]">
+                  folder_open
+                </span>
+                <h2 className="font-headline-sm text-headline-sm text-on-surface font-semibold text-base group-hover:text-primary transition-colors">
+                  Documentos da Cobrança
+                </h2>
+
+                {/* Resumo compacto */}
+                <div className="flex items-center gap-1.5 text-xs text-on-surface-variant font-data-mono flex-wrap">
+                  <span className="text-outline-variant">•</span>
+                  <span className="px-2 py-0.5 rounded-full bg-surface-container font-data-mono font-bold text-xs text-primary">
+                    {MOCK_DOCUMENTOS.length} Arquivos
+                  </span>
+                  <span className="text-outline-variant hidden sm:inline">·</span>
+                  <span className="text-on-surface-variant text-[11px] hidden sm:inline">
+                    Boleto, Comprovante, Protesto e Anuência
+                  </span>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2 shrink-0">
+                <span className="text-xs text-primary font-medium hidden sm:inline">
+                  {isDocsExpanded ? 'Recolher' : 'Ver documentos'}
+                </span>
+                <button
+                  type="button"
+                  className="p-1 rounded-full text-on-surface-variant group-hover:text-primary group-hover:bg-surface-container-high transition-colors"
+                  aria-label={isDocsExpanded ? 'Recolher' : 'Expandir'}
+                >
+                  <span className="material-symbols-outlined text-[20px]">
+                    {isDocsExpanded ? 'expand_less' : 'expand_more'}
+                  </span>
+                </button>
+              </div>
+            </div>
+
+            {/* Conteúdo Detalhado (Expandido) */}
+            {isDocsExpanded && (
+              <div className="mt-space-md pt-space-md border-t border-outline-variant/20 flex flex-col gap-3">
+                <div className="overflow-x-auto rounded-lg border border-outline-variant/20">
+                  <table className="w-full text-left font-body-sm text-xs">
+                    <thead>
+                      <tr className="bg-surface-container-low text-on-surface-variant font-label-uppercase tracking-wider">
+                        <th className="py-2.5 px-3">Nome do Arquivo</th>
+                        <th className="py-2.5 px-3">Tipo</th>
+                        <th className="py-2.5 px-3">Data</th>
+                        <th className="py-2.5 px-3">Usuário que Anexou</th>
+                        <th className="py-2.5 px-3 text-right">Ações</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-outline-variant/15 bg-surface-container-lowest">
+                      {MOCK_DOCUMENTOS.map((doc) => (
+                        <tr
+                          key={doc.id}
+                          className="hover:bg-surface-container-low/60 transition-colors group"
+                        >
+                          {/* Nome do arquivo */}
+                          <td className="py-2.5 px-3">
+                            <div className="flex items-center gap-2.5">
+                              <div className="w-8 h-8 rounded-lg bg-rose-50 border border-rose-200/80 flex items-center justify-center text-rose-600 shrink-0 shadow-2xs">
+                                <span className="material-symbols-outlined text-[18px]">
+                                  picture_as_pdf
+                                </span>
+                              </div>
+                              <div className="flex flex-col min-w-0">
+                                <span className="font-semibold text-primary font-data-mono text-xs truncate group-hover:underline">
+                                  {doc.nomeArquivo}
+                                </span>
+                                <span className="text-[10px] text-on-surface-variant font-data-mono">
+                                  {doc.tamanho}
+                                </span>
+                              </div>
+                            </div>
+                          </td>
+
+                          {/* Tipo */}
+                          <td className="py-2.5 px-3">
+                            <span
+                              className={`inline-flex items-center gap-1 px-2 py-0.5 rounded font-badge-sm text-[10px] font-semibold border ${doc.corTipo}`}
+                            >
+                              <span className="material-symbols-outlined text-[12px]">
+                                {doc.icone}
+                              </span>
+                              <span>{doc.tipo}</span>
+                            </span>
+                          </td>
+
+                          {/* Data */}
+                          <td className="py-2.5 px-3 font-data-mono text-on-surface font-medium">
+                            <div className="flex items-center gap-1.5">
+                              <span className="material-symbols-outlined text-[14px] text-outline">
+                                calendar_today
+                              </span>
+                              <span>{doc.data}</span>
+                            </div>
+                          </td>
+
+                          {/* Usuário que anexou */}
+                          <td className="py-2.5 px-3">
+                            <div className="flex items-center gap-1.5">
+                              <div className="w-5 h-5 rounded-full bg-surface-container-high flex items-center justify-center text-[10px] font-bold text-primary">
+                                {doc.usuario.charAt(0)}
+                              </div>
+                              <span className="text-on-surface font-medium text-xs">
+                                {doc.usuario}
+                              </span>
+                            </div>
+                          </td>
+
+                          {/* Ações: Visualizar e Baixar */}
+                          <td className="py-2.5 px-3 text-right">
+                            <div className="flex items-center justify-end gap-1.5">
+                              <button
+                                type="button"
+                                onClick={() => setPreviewDoc(doc)}
+                                className="px-2.5 py-1 rounded-md bg-surface-container hover:bg-primary hover:text-surface text-primary font-semibold text-xs flex items-center gap-1 transition-colors cursor-pointer shadow-2xs"
+                                title={`Visualizar ${doc.nomeArquivo}`}
+                              >
+                                <span className="material-symbols-outlined text-[15px]">
+                                  visibility
+                                </span>
+                                <span>Visualizar</span>
+                              </button>
+
+                              <button
+                                type="button"
+                                onClick={() => handleDownloadMockDoc(doc)}
+                                className="px-2.5 py-1 rounded-md bg-surface-container hover:bg-secondary hover:text-on-secondary text-on-surface-variant font-semibold text-xs flex items-center gap-1 transition-colors cursor-pointer shadow-2xs"
+                                title={`Baixar ${doc.nomeArquivo}`}
+                              >
+                                <span className="material-symbols-outlined text-[15px]">
+                                  download
+                                </span>
+                                <span>Baixar</span>
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+
+                <div className="flex items-center justify-between text-[11px] text-on-surface-variant px-1 pt-0.5">
+                  <span className="flex items-center gap-1">
+                    <span className="material-symbols-outlined text-[14px] text-primary">
+                      info
+                    </span>
+                    <span>Documentos vinculados eletronicamente à pasta judicial e extrajudicial do título.</span>
+                  </span>
+                  <span className="font-data-mono">Hash SHA-256 verificado</span>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* ===================================================================== */}
           {/* 5. HISTÓRICO DA COBRANÇA (TIMELINE PERMANENTE)                        */}
           {/* ===================================================================== */}
           <div className="p-space-lg bg-surface-container-lowest rounded-xl shadow-sm flex flex-col border border-outline-variant/30">
@@ -2239,11 +2645,26 @@ export const FichaCobrancaView: React.FC<FichaCobrancaViewProps> = ({
                   Outras Cobranças deste Devedor ({debtorDebts.length})
                 </h3>
               </div>
+              {canConsolidate && (
+                <button
+                  type="button"
+                  onClick={handleOpenConsolidateModal}
+                  className="px-2 py-1 rounded bg-amber-500/10 hover:bg-amber-500/20 text-amber-800 dark:text-amber-300 border border-amber-500/30 text-[11px] font-semibold flex items-center gap-1 transition-colors cursor-pointer"
+                  title="Consolidar cobranças em aberto deste devedor"
+                >
+                  <span className="material-symbols-outlined text-[14px]">merge_type</span>
+                  <span>Consolidar ({openDebtorDebts.length})</span>
+                </button>
+              )}
             </div>
 
             <div className="flex flex-col gap-2.5">
               {debtorDebts.map((d) => {
                 const isCurrent = d.id === debt.id;
+                const isConsolidatedInMock =
+                  mockConsolidation &&
+                  mockConsolidation.debtorId === debtor.id &&
+                  mockConsolidation.debtIds.includes(d.id);
 
                 return (
                   <div
@@ -2261,13 +2682,19 @@ export const FichaCobrancaView: React.FC<FichaCobrancaViewProps> = ({
                     }`}
                   >
                     <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-1.5">
+                      <div className="flex items-center gap-1.5 flex-wrap">
                         <span className="font-data-mono font-bold text-primary text-xs">
                           Título {d.titleNumber} ({d.installment})
                         </span>
                         <span className="text-[10px] text-on-surface-variant font-medium">
                           • {d.invoiceNumber}
                         </span>
+                        {isConsolidatedInMock && (
+                          <span className="px-1.5 py-0.2 rounded bg-amber-100 text-amber-900 border border-amber-300 font-badge-sm text-[9px] uppercase font-bold flex items-center gap-0.5">
+                            <span className="material-symbols-outlined text-[11px]">link</span>
+                            Consolidado
+                          </span>
+                        )}
                       </div>
                       {isCurrent ? (
                         <span className="px-2 py-0.5 rounded bg-secondary text-on-secondary font-badge-sm text-[9px] uppercase font-bold">
@@ -2470,6 +2897,417 @@ export const FichaCobrancaView: React.FC<FichaCobrancaViewProps> = ({
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* MODAL DE PRÉ-VISUALIZAÇÃO DE DOCUMENTO (UI MOCK)                          */}
+      {/* ========================================================================= */}
+      {previewDoc && (
+        <div className="fixed inset-0 z-50 bg-inverse-surface/60 backdrop-blur-sm flex items-center justify-center p-space-md sm:p-space-xl overflow-y-auto animate-fade-in">
+          <div className="bg-surface-container-lowest w-full max-w-3xl rounded-xl shadow-2xl overflow-hidden my-auto flex flex-col border border-outline-variant/30">
+            {/* Header do Modal */}
+            <div className="h-14 px-space-lg bg-primary text-surface flex items-center justify-between shrink-0">
+              <div className="flex items-center gap-space-sm min-w-0">
+                <span className="material-symbols-outlined text-rose-300 text-[24px]">
+                  picture_as_pdf
+                </span>
+                <div className="min-w-0">
+                  <h3 className="font-title-md text-title-md font-bold leading-tight truncate">
+                    {previewDoc.nomeArquivo}
+                  </h3>
+                  <span className="font-label-uppercase text-[10px] text-surface/80 tracking-wider">
+                    {previewDoc.tipo} • Anexado em {previewDoc.data} por {previewDoc.usuario}
+                  </span>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-space-xs shrink-0">
+                <button
+                  type="button"
+                  onClick={() => handleDownloadMockDoc(previewDoc)}
+                  className="h-8 px-3 rounded-lg bg-surface/10 hover:bg-surface/20 text-surface text-xs font-semibold flex items-center gap-1 transition-colors cursor-pointer"
+                  title="Baixar arquivo"
+                >
+                  <span className="material-symbols-outlined text-[16px]">download</span>
+                  <span>Baixar</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => window.print()}
+                  className="h-8 px-3 rounded-lg bg-surface/10 hover:bg-surface/20 text-surface text-xs font-semibold flex items-center gap-1 transition-colors cursor-pointer"
+                  title="Imprimir visualização"
+                >
+                  <span className="material-symbols-outlined text-[16px]">print</span>
+                  <span>Imprimir</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setPreviewDoc(null)}
+                  className="w-8 h-8 rounded-lg bg-surface/10 hover:bg-surface/20 text-surface flex items-center justify-center transition-colors cursor-pointer"
+                  title="Fechar visualizador"
+                >
+                  <span className="material-symbols-outlined text-[20px]">close</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Folha do Documento Simulado */}
+            <div className="p-6 sm:p-8 bg-surface-container-low overflow-y-auto max-h-[70vh]">
+              <div className="bg-surface-container-lowest p-8 sm:p-10 rounded-xl shadow-md border border-outline-variant/30 max-w-2xl mx-auto space-y-6 text-on-surface">
+                {/* Cabeçalho da Folha */}
+                <div className="flex items-start justify-between pb-4 border-b border-outline-variant/30">
+                  <div>
+                    <span className="text-[10px] font-label-uppercase font-bold text-outline tracking-wider uppercase block">
+                      RegCobre • Sistema de Recuperação de Ativos
+                    </span>
+                    <h4 className="font-headline-sm font-bold text-primary text-lg mt-0.5">
+                      {previewDoc.tipo.toUpperCase()}
+                    </h4>
+                    <span className="text-xs text-on-surface-variant font-data-mono">
+                      Título Ref: {debt.titleNumber} • Parcela: {debt.installment}
+                    </span>
+                  </div>
+                  <div className="text-right">
+                    <span className="px-2 py-0.5 rounded bg-surface-container font-data-mono text-[11px] font-bold text-primary">
+                      {previewDoc.nomeArquivo}
+                    </span>
+                    <span className="text-[10px] text-on-surface-variant block mt-1 font-data-mono">
+                      Data: {previewDoc.data}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Dados da Cobrança no Documento */}
+                <div className="grid grid-cols-2 gap-4 p-4 bg-surface-container-low rounded-lg text-xs">
+                  <div>
+                    <span className="text-[10px] text-outline font-label-uppercase font-bold block">
+                      DEVEDOR
+                    </span>
+                    <strong className="text-on-surface block mt-0.5">{debt.debtorName}</strong>
+                    <span className="font-data-mono text-[11px] text-on-surface-variant">
+                      {debt.debtorType === 'PJ' ? 'CNPJ' : 'CPF'}: {debt.debtorCnpjCpf}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="text-[10px] text-outline font-label-uppercase font-bold block">
+                      EMPRESA CREDORA
+                    </span>
+                    <strong className="text-primary block mt-0.5">
+                      {debtEmpresa ? debtEmpresa.razaoSocial || debtEmpresa.nomeFantasia : 'RegCobre Matriz'}
+                    </strong>
+                    <span className="font-data-mono text-[11px] text-on-surface-variant">
+                      CNPJ: {debtEmpresa?.cnpj || '18.234.567/0001-89'}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="text-[10px] text-outline font-label-uppercase font-bold block">
+                      VALOR ATUALIZADO
+                    </span>
+                    <strong className="text-secondary font-bold text-sm font-data-mono block mt-0.5">
+                      R$ {debt.currentValue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                    </strong>
+                  </div>
+                  <div>
+                    <span className="text-[10px] text-outline font-label-uppercase font-bold block">
+                      OPERADOR RESPONSÁVEL
+                    </span>
+                    <span className="text-on-surface block mt-0.5">{previewDoc.usuario}</span>
+                  </div>
+                </div>
+
+                {/* Conteúdo específico baseado no documento */}
+                {previewDoc.nomeArquivo === 'Boleto.pdf' && (
+                  <div className="space-y-4 pt-2">
+                    <div className="p-3 bg-slate-50 border border-slate-200 rounded font-data-mono text-xs text-slate-800 break-all select-all text-center">
+                      34191.79001 01043.510047 91020.150008 4 99120000{Math.round(debt.currentValue)}
+                    </div>
+                    <div className="h-14 bg-slate-100 border border-slate-200 rounded flex items-center justify-center p-2">
+                      <div className="flex items-center gap-[2px] h-full w-full justify-center opacity-80">
+                        {Array.from({ length: 55 }).map((_, i) => (
+                          <div
+                            key={i}
+                            className="bg-black h-full"
+                            style={{ width: i % 3 === 0 ? '3px' : i % 2 === 0 ? '1px' : '2px' }}
+                          />
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {previewDoc.nomeArquivo === 'Comprovante_Pagamento.pdf' && (
+                  <div className="p-4 bg-emerald-50/60 border border-emerald-200 rounded-lg space-y-2 text-xs">
+                    <div className="flex items-center gap-2 text-emerald-800 font-bold">
+                      <span className="material-symbols-outlined text-[18px]">verified</span>
+                      <span>COMPROVANTE DE TRANSAÇÃO AUTENTICADA</span>
+                    </div>
+                    <p className="text-on-surface-variant leading-relaxed">
+                      Operação liquidada junto ao Sistema Financeiro Nacional via chave PIX / TED.
+                    </p>
+                    <div className="pt-2 border-t border-emerald-200 text-[11px] font-data-mono text-emerald-900 flex justify-between">
+                      <span>Autenticação: E849.2B10.984C.332A</span>
+                      <span>Canal: Internet Banking</span>
+                    </div>
+                  </div>
+                )}
+
+                {previewDoc.nomeArquivo === 'Ficha_Protesto.pdf' && (
+                  <div className="p-4 bg-amber-50/60 border border-amber-200 rounded-lg space-y-2 text-xs">
+                    <div className="flex items-center gap-2 text-amber-900 font-bold">
+                      <span className="material-symbols-outlined text-[18px]">gavel</span>
+                      <span>CERTIDÃO DE APONTAMENTO / PROTESTO EXTRAJUDICIAL</span>
+                    </div>
+                    <p className="text-on-surface-variant leading-relaxed">
+                      Instrumento lavrado no Cartório de Notas e Registro de Títulos e Documentos com base na duplicata mercantil inadimplida.
+                    </p>
+                    <div className="pt-2 border-t border-amber-200 text-[11px] font-data-mono text-amber-900 flex justify-between">
+                      <span>Livro 14-B • Folha 102</span>
+                      <span>Status: Notificação Efetivada</span>
+                    </div>
+                  </div>
+                )}
+
+                {previewDoc.nomeArquivo === 'Carta_Anuencia.pdf' && (
+                  <div className="p-4 bg-purple-50/60 border border-purple-200 rounded-lg space-y-2 text-xs">
+                    <div className="flex items-center gap-2 text-purple-900 font-bold">
+                      <span className="material-symbols-outlined text-[18px]">verified_user</span>
+                      <span>TERMO DE ANUÊNCIA E QUITAÇÃO INTEGRAL</span>
+                    </div>
+                    <p className="text-on-surface-variant leading-relaxed">
+                      Declaramos para os devidos fins que o débito objeto do título supra foi regularizado, conferindo plena, geral e irrevogável quitação para cancelamento de apontamentos cadastrais.
+                    </p>
+                    <div className="pt-2 border-t border-purple-200 text-[11px] font-data-mono text-purple-900 flex justify-between">
+                      <span>Representante Legal: RegCobre Ativos</span>
+                      <span>Hash de Validação: OK</span>
+                    </div>
+                  </div>
+                )}
+
+                {/* Rodapé da Folha */}
+                <div className="pt-4 border-t border-outline-variant/30 flex items-center justify-between text-[10px] text-outline font-data-mono">
+                  <span>Documento emitido para fins de conferência operacional</span>
+                  <span>Ambiente RegCobre v3.8.4</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Footer do Modal */}
+            <div className="p-4 bg-surface-container-low border-t border-outline-variant/20 flex items-center justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setPreviewDoc(null)}
+                className="h-9 px-4 rounded-lg bg-surface-container hover:bg-surface-variant text-on-surface font-semibold text-xs transition-colors cursor-pointer"
+              >
+                Fechar Visualizador
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* MODAL: CONSOLIDAR COBRANÇAS EM ABERTO                                     */}
+      {/* ========================================================================= */}
+      {isConsolidateModalOpen && (
+        <div className="fixed inset-0 z-50 bg-inverse-surface/60 backdrop-blur-sm flex items-center justify-center p-space-md sm:p-space-xl overflow-y-auto animate-fade-in">
+          <div className="bg-surface-container-lowest w-full max-w-2xl rounded-xl shadow-2xl overflow-hidden my-auto flex flex-col border border-outline-variant/30">
+            {/* Header do Modal */}
+            <div className="h-16 px-space-lg bg-primary text-surface flex items-center justify-between shrink-0">
+              <div className="flex items-center gap-space-sm min-w-0">
+                <span className="material-symbols-outlined text-secondary-fixed text-[24px]">
+                  merge_type
+                </span>
+                <div className="min-w-0">
+                  <h3 className="font-title-md text-title-md font-bold leading-tight truncate">
+                    Consolidar Cobranças em Aberto
+                  </h3>
+                  <span className="font-label-uppercase text-[11px] text-surface/80 tracking-wider truncate block">
+                    Devedor: {debtor.name} ({openDebtorDebts.length} cobranças em aberto)
+                  </span>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsConsolidateModalOpen(false)}
+                className="text-surface hover:text-secondary-fixed transition-colors p-1.5 rounded-lg cursor-pointer"
+                title="Fechar"
+              >
+                <span className="material-symbols-outlined text-[20px]">close</span>
+              </button>
+            </div>
+
+            {/* Corpo do Modal */}
+            <div className="p-space-lg flex flex-col gap-space-md max-h-[75vh] overflow-y-auto">
+              {/* Informativo */}
+              <div className="p-3 bg-surface-container-low border border-outline-variant/20 rounded-lg flex items-start gap-2.5 text-xs text-on-surface-variant">
+                <span className="material-symbols-outlined text-primary text-[18px] shrink-0 mt-0.5">
+                  info
+                </span>
+                <div className="leading-relaxed">
+                  <p>
+                    Selecione as cobranças em aberto que deseja agrupar para uma negociação ou pagamento conjunto.
+                  </p>
+                  <p className="mt-1 text-[11px] text-outline">
+                    <strong>Importante:</strong> Esta ação agrupa os títulos para proposta unificada. As cobranças individuais e todos os seus históricos de acionamentos permanecem integralmente preservados.
+                  </p>
+                </div>
+              </div>
+
+              {/* Barra de Seleção Rápida */}
+              <div className="flex items-center justify-between pt-1">
+                <span className="font-label-uppercase text-xs font-bold text-outline uppercase tracking-wider">
+                  Cobranças Disponíveis ({openDebtorDebts.length})
+                </span>
+                <button
+                  type="button"
+                  onClick={handleToggleSelectAllConsolidation}
+                  className="text-xs text-primary hover:text-primary/80 font-semibold cursor-pointer underline"
+                >
+                  {selectedDebtIdsForConsolidation.length === openDebtorDebts.length
+                    ? 'Desmarcar Todas'
+                    : 'Selecionar Todas'}
+                </button>
+              </div>
+
+              {/* Lista de Cobranças em Aberto */}
+              <div className="flex flex-col gap-2">
+                {openDebtorDebts.map((d) => {
+                  const isSelected = selectedDebtIdsForConsolidation.includes(d.id);
+                  const isCurrent = d.id === debt.id;
+                  const dStyle = getDebtStatusRowStyle(d.status);
+
+                  return (
+                    <label
+                      key={d.id}
+                      className={`p-3.5 rounded-xl border transition-all cursor-pointer flex items-center justify-between gap-3 ${
+                        isSelected
+                          ? 'bg-amber-500/5 border-amber-500/40 shadow-2xs'
+                          : 'bg-surface-container-low hover:bg-surface-container border-outline-variant/20 opacity-80'
+                      }`}
+                    >
+                      <div className="flex items-center gap-3 min-w-0">
+                        <input
+                          type="checkbox"
+                          checked={isSelected}
+                          onChange={() => toggleDebtSelectionForConsolidation(d.id)}
+                          className="w-4 h-4 rounded text-amber-600 accent-amber-600 cursor-pointer shrink-0"
+                        />
+
+                        <div className="flex flex-col gap-1 min-w-0">
+                          {/* Número / Título */}
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="font-data-mono font-bold text-xs text-primary">
+                              Título {d.titleNumber}
+                            </span>
+                            {d.installment && (
+                              <span className="text-[11px] text-on-surface-variant font-medium">
+                                ({d.installment})
+                              </span>
+                            )}
+                            {d.invoiceNumber && (
+                              <span className="text-[10px] text-on-surface-variant font-mono">
+                                • {d.invoiceNumber}
+                              </span>
+                            )}
+                            {isCurrent && (
+                              <span className="px-1.5 py-0.2 rounded bg-primary/10 text-primary text-[9px] font-bold uppercase">
+                                Cobrança Atual
+                              </span>
+                            )}
+                          </div>
+
+                          {/* Vencimento */}
+                          <div className="flex items-center gap-2 text-xs text-on-surface-variant">
+                            <span className="flex items-center gap-1">
+                              <span className="material-symbols-outlined text-[14px]">calendar_today</span>
+                              <span>Vencimento: <strong className="text-on-surface">{d.dueDate}</strong></span>
+                            </span>
+                            {d.daysOverdue > 0 && (
+                              <span className="text-error text-[11px] font-medium">
+                                • {d.daysOverdue} dias em atraso
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Lado Direito: Valor e Status */}
+                      <div className="flex flex-col items-end gap-1 shrink-0 text-right">
+                        {/* Valor */}
+                        <span className="font-data-mono font-bold text-sm text-on-surface">
+                          R$ {d.currentValue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                        </span>
+
+                        {/* Status */}
+                        <span
+                          className={`inline-flex items-center gap-1 px-2 py-0.5 rounded font-badge-sm text-[10px] font-semibold ${dStyle.badgeClass}`}
+                        >
+                          <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${dStyle.indicatorClass}`} />
+                          <span>{d.statusLabel || dStyle.label}</span>
+                        </span>
+                      </div>
+                    </label>
+                  );
+                })}
+              </div>
+
+              {/* RESUMO NO FINAL */}
+              <div className="p-4 bg-surface-container rounded-xl border border-outline-variant/30 flex flex-col sm:flex-row sm:items-center justify-between gap-3 mt-1">
+                <div>
+                  <span className="text-[10px] font-label-uppercase font-bold text-outline block">
+                    QUANTIDADE SELECIONADA
+                  </span>
+                  <span className="text-sm font-bold text-on-surface">
+                    {selectedDebtIdsForConsolidation.length} de {openDebtorDebts.length} cobranças selecionadas
+                  </span>
+                  {selectedDebtIdsForConsolidation.length < 2 && (
+                    <span className="text-[11px] text-error block mt-0.5 font-medium">
+                      ⚠️ Selecione pelo menos 2 cobranças para criar a consolidação.
+                    </span>
+                  )}
+                </div>
+
+                <div className="sm:text-right">
+                  <span className="text-[10px] font-label-uppercase font-bold text-outline block">
+                    VALOR TOTAL SELECIONADO
+                  </span>
+                  <span className="font-data-mono text-lg font-bold text-primary">
+                    R$ {totalConsolidatedValue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* Footer do Modal com Botões */}
+            <div className="p-4 bg-surface-container-low border-t border-outline-variant/20 flex items-center justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setIsConsolidateModalOpen(false)}
+                className="h-10 px-4 rounded-lg bg-surface-container hover:bg-surface-variant text-on-surface font-semibold text-xs transition-colors cursor-pointer"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={handleCreateConsolidation}
+                disabled={selectedDebtIdsForConsolidation.length < 2}
+                className={`h-10 px-5 rounded-lg font-semibold text-xs transition-all inline-flex items-center gap-2 shadow-sm ${
+                  selectedDebtIdsForConsolidation.length >= 2
+                    ? 'bg-primary hover:bg-primary/90 text-surface cursor-pointer'
+                    : 'bg-surface-container-high text-outline cursor-not-allowed opacity-60'
+                }`}
+                title={
+                  selectedDebtIdsForConsolidation.length < 2
+                    ? 'Selecione pelo menos 2 cobranças'
+                    : 'Criar consolidação de cobranças'
+                }
+              >
+                <span className="material-symbols-outlined text-[18px]">merge_type</span>
+                <span>Criar Consolidação</span>
+              </button>
+            </div>
           </div>
         </div>
       )}

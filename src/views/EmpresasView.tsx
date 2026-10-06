@@ -41,6 +41,12 @@ export const EmpresasView: React.FC = () => {
   // Form Fields - CONFIGURAÇÃO DAS COBRANÇAS
   const [modoCarteira, setModoCarteira] = useState<ModoCarteiraEmpresa>('COMPARTILHADA');
 
+  // Form Fields - REGRAS DE NEGOCIAÇÃO E CONSOLIDAÇÃO
+  const [permitirNegociacaoNaoVencidas, setPermitirNegociacaoNaoVencidas] = useState(false);
+  const [descontoMaximoNaoVencidas, setDescontoMaximoNaoVencidas] = useState<number | string>(0);
+  const [permitirDescontoVencidos, setPermitirDescontoVencidos] = useState(false);
+  const [descontoMaximoVencidos, setDescontoMaximoVencidos] = useState<number | string>(0);
+
   // Sub-CRUD Modal State - FORMAS DE PAGAMENTO / RECEBIMENTO
   const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
   const [editingPaymentId, setEditingPaymentId] = useState<string | null>(null);
@@ -89,6 +95,10 @@ export const EmpresasView: React.FC = () => {
     setEstado('SP');
     setAtivo(true);
     setModoCarteira('COMPARTILHADA');
+    setPermitirNegociacaoNaoVencidas(false);
+    setDescontoMaximoNaoVencidas(0);
+    setPermitirDescontoVencidos(false);
+    setDescontoMaximoVencidos(0);
     setViewMode('form');
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
@@ -112,6 +122,10 @@ export const EmpresasView: React.FC = () => {
     setEstado(emp.estado || 'SP');
     setAtivo(emp.ativo);
     setModoCarteira(emp.modoCarteira || 'COMPARTILHADA');
+    setPermitirNegociacaoNaoVencidas(emp.permitirNegociacaoNaoVencidas ?? false);
+    setDescontoMaximoNaoVencidas(emp.descontoMaximoNaoVencidas ?? 0);
+    setPermitirDescontoVencidos(emp.permitirDescontoVencidos ?? false);
+    setDescontoMaximoVencidos(emp.descontoMaximoVencidos ?? 0);
     setViewMode('form');
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
@@ -132,6 +146,13 @@ export const EmpresasView: React.FC = () => {
       return;
     }
 
+    const parsedDescNaoVencidas = permitirNegociacaoNaoVencidas
+      ? Math.min(100, Math.max(0, parseFloat(String(descontoMaximoNaoVencidas).replace(',', '.')) || 0))
+      : 0;
+    const parsedDescVencidos = permitirDescontoVencidos
+      ? Math.min(100, Math.max(0, parseFloat(String(descontoMaximoVencidos).replace(',', '.')) || 0))
+      : 0;
+
     if (editingEmpresaId) {
       debtService.updateEmpresa(editingEmpresaId, {
         razaoSocial: razaoSocial.trim(),
@@ -149,6 +170,10 @@ export const EmpresasView: React.FC = () => {
         estado: estado.trim() || undefined,
         ativo,
         modoCarteira,
+        permitirNegociacaoNaoVencidas,
+        descontoMaximoNaoVencidas: parsedDescNaoVencidas,
+        permitirDescontoVencidos,
+        descontoMaximoVencidos: parsedDescVencidos,
       });
       showToast(`Empresa "${nomeFantasia}" atualizada com sucesso!`);
     } else {
@@ -169,6 +194,10 @@ export const EmpresasView: React.FC = () => {
           estado: estado.trim() || undefined,
           ativo,
           modoCarteira,
+          permitirNegociacaoNaoVencidas,
+          descontoMaximoNaoVencidas: parsedDescNaoVencidas,
+          permitirDescontoVencidos,
+          descontoMaximoVencidos: parsedDescVencidos,
         },
         tempEmpresaId
       );
@@ -1315,6 +1344,305 @@ export const EmpresasView: React.FC = () => {
                       </p>
                     </div>
                   </label>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* ===================================================================== */}
+          {/* SEÇÃO 4: REGRAS DE NEGOCIAÇÃO E CONSOLIDAÇÃO                          */}
+          {/* ===================================================================== */}
+          <div className="bg-surface-container-lowest rounded-xl shadow-sm border border-outline-variant/30 overflow-hidden">
+            <div className="p-4 bg-surface-container-low border-b border-outline-variant/20 flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2">
+                <span className="material-symbols-outlined text-[20px] text-primary">
+                  rule
+                </span>
+                <h2 className="font-title-md font-bold text-primary text-sm uppercase tracking-wider">
+                  Regras de Negociação e Consolidação
+                </h2>
+              </div>
+              <span className="text-[11px] text-on-surface-variant font-medium hidden sm:inline">
+                Políticas de agrupamento e limites de desconto
+              </span>
+            </div>
+
+            <div className="p-space-lg space-y-5">
+              {/* Informação explicativa sobre consolidação e desconto */}
+              <div className="p-3 bg-surface-container-low border border-outline-variant/20 rounded-lg flex items-start gap-2.5 text-xs text-on-surface-variant">
+                <span className="material-symbols-outlined text-primary text-[18px] shrink-0 mt-0.5">
+                  info
+                </span>
+                <p className="leading-relaxed">
+                  Consolidação e desconto são conceitos diferentes: a empresa pode autorizar o agrupamento de títulos para negociação e pagamento conjunto sem necessariamente permitir concessão de desconto.
+                </p>
+              </div>
+
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+                {/* 1. Permitir negociação/consolidação de parcelas NÃO VENCIDAS */}
+                <div
+                  className={`p-4 rounded-xl border-2 transition-all flex flex-col justify-between gap-4 ${
+                    permitirNegociacaoNaoVencidas
+                      ? 'border-primary/40 bg-primary/5 shadow-2xs'
+                      : 'border-outline-variant/30 bg-surface-container-low'
+                  }`}
+                >
+                  <div className="space-y-2">
+                    <div className="flex items-start justify-between gap-2">
+                      <div>
+                        <span className="font-label-uppercase text-[11px] font-bold text-outline block">
+                          PARCELAS NÃO VENCIDAS
+                        </span>
+                        <h3 className="font-title-sm font-bold text-sm text-on-surface mt-0.5">
+                          Permitir negociação/consolidação de parcelas NÃO VENCIDAS
+                        </h3>
+                      </div>
+                      <span
+                        className={`px-2 py-0.5 rounded font-badge-sm text-[10px] font-bold uppercase shrink-0 ${
+                          permitirNegociacaoNaoVencidas
+                            ? 'bg-emerald-100 text-emerald-800 border border-emerald-300'
+                            : 'bg-surface-container-high text-outline'
+                        }`}
+                      >
+                        {permitirNegociacaoNaoVencidas ? 'Habilitado' : 'Desabilitado'}
+                      </span>
+                    </div>
+
+                    <p className="text-xs text-on-surface-variant leading-relaxed">
+                      Autoriza agrupar e negociar antecipadamente títulos ou parcelas a vencer deste credor junto ao devedor.
+                    </p>
+                  </div>
+
+                  <div className="space-y-3 pt-3 border-t border-outline-variant/20">
+                    {/* Campo Sim/Não */}
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="font-label-uppercase text-xs font-bold text-outline">
+                        PERMITIR:
+                      </span>
+                      <div className="inline-flex rounded-lg border border-outline-variant/30 bg-surface-container-lowest p-1 gap-1">
+                        <button
+                          type="button"
+                          onClick={() => setPermitirNegociacaoNaoVencidas(true)}
+                          className={`px-4 py-1.5 rounded-md text-xs font-semibold transition-all cursor-pointer flex items-center gap-1.5 ${
+                            permitirNegociacaoNaoVencidas
+                              ? 'bg-primary text-surface shadow-xs font-bold'
+                              : 'text-on-surface-variant hover:text-on-surface hover:bg-surface-container'
+                          }`}
+                        >
+                          <span className="material-symbols-outlined text-[15px]">
+                            {permitirNegociacaoNaoVencidas ? 'check_circle' : 'radio_button_unchecked'}
+                          </span>
+                          <span>Sim</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setPermitirNegociacaoNaoVencidas(false)}
+                          className={`px-4 py-1.5 rounded-md text-xs font-semibold transition-all cursor-pointer flex items-center gap-1.5 ${
+                            !permitirNegociacaoNaoVencidas
+                              ? 'bg-surface-container-high text-on-surface shadow-xs font-bold'
+                              : 'text-on-surface-variant hover:text-on-surface hover:bg-surface-container'
+                          }`}
+                        >
+                          <span className="material-symbols-outlined text-[15px]">
+                            {!permitirNegociacaoNaoVencidas ? 'cancel' : 'radio_button_unchecked'}
+                          </span>
+                          <span>Não</span>
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Desconto máximo permitido */}
+                    <div
+                      className={`p-3 rounded-lg border transition-all ${
+                        permitirNegociacaoNaoVencidas
+                          ? 'bg-surface-container-lowest border-outline-variant/30'
+                          : 'bg-surface-container-high/30 border-dashed border-outline-variant/20 opacity-60'
+                      }`}
+                    >
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                        <div>
+                          <label
+                            htmlFor="desc-nao-vencidas"
+                            className="block font-label-uppercase font-bold text-outline text-[11px]"
+                          >
+                            DESCONTO MÁXIMO PERMITIDO
+                          </label>
+                          <span className="text-[10px] text-on-surface-variant block mt-0.5">
+                            Percentual de 0,00% a 100,00% (ex: 5,00%)
+                          </span>
+                        </div>
+                        <div className="relative w-36 shrink-0">
+                          <input
+                            id="desc-nao-vencidas"
+                            type="number"
+                            min="0"
+                            max="100"
+                            step="0.01"
+                            disabled={!permitirNegociacaoNaoVencidas}
+                            value={descontoMaximoNaoVencidas}
+                            onChange={(e) => {
+                              const raw = e.target.value;
+                              if (raw === '') {
+                                setDescontoMaximoNaoVencidas('');
+                                return;
+                              }
+                              const val = parseFloat(raw);
+                              if (val < 0) setDescontoMaximoNaoVencidas(0);
+                              else if (val > 100) setDescontoMaximoNaoVencidas(100);
+                              else setDescontoMaximoNaoVencidas(raw);
+                            }}
+                            placeholder="Ex: 5,00"
+                            className={`w-full h-9 pl-3 pr-8 rounded-lg text-xs font-data-mono font-bold border transition-colors ${
+                              permitirNegociacaoNaoVencidas
+                                ? 'bg-surface-container-lowest text-on-surface border-outline-variant/40 focus:outline-none focus:border-primary'
+                                : 'bg-surface-container-high text-outline border-outline-variant/20 cursor-not-allowed'
+                            }`}
+                          />
+                          <span className="absolute right-3 top-2 text-xs font-bold text-on-surface-variant font-data-mono pointer-events-none">
+                            %
+                          </span>
+                        </div>
+                      </div>
+                      {!permitirNegociacaoNaoVencidas && (
+                        <span className="text-[10px] text-outline italic block mt-1.5">
+                          Habilite a opção acima para permitir e configurar o desconto máximo.
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {/* 2. Permitir desconto em consolidação com títulos VENCIDOS */}
+                <div
+                  className={`p-4 rounded-xl border-2 transition-all flex flex-col justify-between gap-4 ${
+                    permitirDescontoVencidos
+                      ? 'border-primary/40 bg-primary/5 shadow-2xs'
+                      : 'border-outline-variant/30 bg-surface-container-low'
+                  }`}
+                >
+                  <div className="space-y-2">
+                    <div className="flex items-start justify-between gap-2">
+                      <div>
+                        <span className="font-label-uppercase text-[11px] font-bold text-outline block">
+                          TÍTULOS VENCIDOS
+                        </span>
+                        <h3 className="font-title-sm font-bold text-sm text-on-surface mt-0.5">
+                          Permitir desconto em consolidação com títulos VENCIDOS
+                        </h3>
+                      </div>
+                      <span
+                        className={`px-2 py-0.5 rounded font-badge-sm text-[10px] font-bold uppercase shrink-0 ${
+                          permitirDescontoVencidos
+                            ? 'bg-emerald-100 text-emerald-800 border border-emerald-300'
+                            : 'bg-surface-container-high text-outline'
+                        }`}
+                      >
+                        {permitirDescontoVencidos ? 'Habilitado' : 'Desabilitado'}
+                      </span>
+                    </div>
+
+                    <p className="text-xs text-on-surface-variant leading-relaxed">
+                      Autoriza conceder desconto sobre títulos já vencidos quando forem agrupados em uma proposta de consolidação.
+                    </p>
+                  </div>
+
+                  <div className="space-y-3 pt-3 border-t border-outline-variant/20">
+                    {/* Campo Sim/Não */}
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="font-label-uppercase text-xs font-bold text-outline">
+                        PERMITIR:
+                      </span>
+                      <div className="inline-flex rounded-lg border border-outline-variant/30 bg-surface-container-lowest p-1 gap-1">
+                        <button
+                          type="button"
+                          onClick={() => setPermitirDescontoVencidos(true)}
+                          className={`px-4 py-1.5 rounded-md text-xs font-semibold transition-all cursor-pointer flex items-center gap-1.5 ${
+                            permitirDescontoVencidos
+                              ? 'bg-primary text-surface shadow-xs font-bold'
+                              : 'text-on-surface-variant hover:text-on-surface hover:bg-surface-container'
+                          }`}
+                        >
+                          <span className="material-symbols-outlined text-[15px]">
+                            {permitirDescontoVencidos ? 'check_circle' : 'radio_button_unchecked'}
+                          </span>
+                          <span>Sim</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setPermitirDescontoVencidos(false)}
+                          className={`px-4 py-1.5 rounded-md text-xs font-semibold transition-all cursor-pointer flex items-center gap-1.5 ${
+                            !permitirDescontoVencidos
+                              ? 'bg-surface-container-high text-on-surface shadow-xs font-bold'
+                              : 'text-on-surface-variant hover:text-on-surface hover:bg-surface-container'
+                          }`}
+                        >
+                          <span className="material-symbols-outlined text-[15px]">
+                            {!permitirDescontoVencidos ? 'cancel' : 'radio_button_unchecked'}
+                          </span>
+                          <span>Não</span>
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Desconto máximo permitido */}
+                    <div
+                      className={`p-3 rounded-lg border transition-all ${
+                        permitirDescontoVencidos
+                          ? 'bg-surface-container-lowest border-outline-variant/30'
+                          : 'bg-surface-container-high/30 border-dashed border-outline-variant/20 opacity-60'
+                      }`}
+                    >
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                        <div>
+                          <label
+                            htmlFor="desc-vencidos"
+                            className="block font-label-uppercase font-bold text-outline text-[11px]"
+                          >
+                            DESCONTO MÁXIMO PERMITIDO
+                          </label>
+                          <span className="text-[10px] text-on-surface-variant block mt-0.5">
+                            Percentual de 0,00% a 100,00% (ex: 5,00%)
+                          </span>
+                        </div>
+                        <div className="relative w-36 shrink-0">
+                          <input
+                            id="desc-vencidos"
+                            type="number"
+                            min="0"
+                            max="100"
+                            step="0.01"
+                            disabled={!permitirDescontoVencidos}
+                            value={descontoMaximoVencidos}
+                            onChange={(e) => {
+                              const raw = e.target.value;
+                              if (raw === '') {
+                                setDescontoMaximoVencidos('');
+                                return;
+                              }
+                              const val = parseFloat(raw);
+                              if (val < 0) setDescontoMaximoVencidos(0);
+                              else if (val > 100) setDescontoMaximoVencidos(100);
+                              else setDescontoMaximoVencidos(raw);
+                            }}
+                            placeholder="Ex: 5,00"
+                            className={`w-full h-9 pl-3 pr-8 rounded-lg text-xs font-data-mono font-bold border transition-colors ${
+                              permitirDescontoVencidos
+                                ? 'bg-surface-container-lowest text-on-surface border-outline-variant/40 focus:outline-none focus:border-primary'
+                                : 'bg-surface-container-high text-outline border-outline-variant/20 cursor-not-allowed'
+                            }`}
+                          />
+                          <span className="absolute right-3 top-2 text-xs font-bold text-on-surface-variant font-data-mono pointer-events-none">
+                            %
+                          </span>
+                        </div>
+                      </div>
+                      {!permitirDescontoVencidos && (
+                        <span className="text-[10px] text-outline italic block mt-1.5">
+                          Habilite a opção acima para permitir e configurar o desconto máximo.
+                        </span>
+                      )}
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
