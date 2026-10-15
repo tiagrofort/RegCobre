@@ -2474,15 +2474,18 @@ export const FichaCobrancaView: React.FC<FichaCobrancaViewProps> = ({
                     </button>
                   </div>
                 ) : (
-                  <div className="overflow-x-auto rounded-lg border border-outline-variant/20">
-                    <table className="w-full text-left font-body-sm text-xs">
+                  <div className="w-full rounded-lg border border-outline-variant/20 overflow-hidden">
+                    <table className="w-full table-fixed text-left font-body-sm text-xs border-collapse">
                       <thead>
-                        <tr className="bg-surface-container-low text-on-surface-variant font-label-uppercase tracking-wider">
-                          <th className="py-2.5 px-3">Nome do Arquivo</th>
-                          <th className="py-2.5 px-3">Tipo</th>
-                          <th className="py-2.5 px-3">Data</th>
-                          <th className="py-2.5 px-3">Usuário que Anexou</th>
-                          <th className="py-2.5 px-3 text-right">Ações</th>
+                        <tr className="bg-surface-container-low text-on-surface-variant font-label-uppercase tracking-wider border-b border-outline-variant/20">
+                          <th className="py-2.5 px-3 min-w-0">Nome do Arquivo</th>
+                          <th className="py-2.5 px-2 w-[110px] sm:w-[135px] md:w-[155px]">Tipo</th>
+                          <th className="py-2.5 px-2 w-[70px] sm:w-[85px]">Data</th>
+                          <th className="py-2.5 px-2 w-[85px] sm:w-[110px]">
+                            <span>Usuário</span>
+                            <span className="hidden sm:inline"> que Anexou</span>
+                          </th>
+                          <th className="py-2.5 px-2 w-[114px] sm:w-[124px] text-right">Ações</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-outline-variant/15 bg-surface-container-lowest">
@@ -2500,10 +2503,10 @@ export const FichaCobrancaView: React.FC<FichaCobrancaViewProps> = ({
                               className="hover:bg-surface-container-low/60 transition-colors group"
                             >
                               {/* Nome do arquivo */}
-                              <td className="py-2.5 px-3">
-                                <div className="flex items-center gap-2.5">
+                              <td className="py-2 px-3 min-w-0 overflow-hidden">
+                                <div className="flex items-center gap-2 sm:gap-2.5 min-w-0">
                                   <div
-                                    className={`w-8 h-8 rounded-lg border flex items-center justify-center shrink-0 shadow-2xs ${
+                                    className={`w-7 h-7 sm:w-8 sm:h-8 rounded-lg border flex items-center justify-center shrink-0 shadow-2xs ${
                                       isImg
                                         ? 'bg-indigo-50 border-indigo-200/80 text-indigo-600'
                                         : isPdf
@@ -2511,21 +2514,24 @@ export const FichaCobrancaView: React.FC<FichaCobrancaViewProps> = ({
                                         : 'bg-amber-50 border-amber-200/80 text-amber-600'
                                     }`}
                                   >
-                                    <span className="material-symbols-outlined text-[18px]">
+                                    <span className="material-symbols-outlined text-[16px] sm:text-[18px]">
                                       {isImg ? 'image' : isPdf ? 'picture_as_pdf' : 'description'}
                                     </span>
                                   </div>
-                                  <div className="flex flex-col min-w-0">
-                                    <span className="font-semibold text-primary font-data-mono text-xs truncate group-hover:underline">
+                                  <div className="flex flex-col min-w-0 flex-1 overflow-hidden">
+                                    <span
+                                      className="font-semibold text-primary font-data-mono text-xs truncate group-hover:underline block"
+                                      title={doc.nomeArquivo}
+                                    >
                                       {doc.nomeArquivo}
                                     </span>
-                                    <div className="flex items-center gap-1.5 text-[10px] text-on-surface-variant font-data-mono">
-                                      <span>{doc.tamanho}</span>
+                                    <div className="flex items-center gap-1.5 text-[10px] text-on-surface-variant font-data-mono min-w-0">
+                                      <span className="shrink-0">{doc.tamanho}</span>
                                       {doc.observacao && (
                                         <>
-                                          <span className="text-outline-variant">•</span>
+                                          <span className="text-outline-variant shrink-0">•</span>
                                           <span
-                                            className="text-outline truncate max-w-[200px]"
+                                            className="text-outline truncate min-w-0 block"
                                             title={`Obs: ${doc.observacao}`}
                                           >
                                             Obs: {doc.observacao}
@@ -2538,91 +2544,92 @@ export const FichaCobrancaView: React.FC<FichaCobrancaViewProps> = ({
                               </td>
 
                               {/* Tipo */}
-                              <td className="py-2.5 px-3">
+                              <td className="py-2 px-2 min-w-0 overflow-hidden">
                                 <span
-                                  className={`inline-flex items-center gap-1 px-2 py-0.5 rounded font-badge-sm text-[10px] font-semibold border ${doc.corTipo}`}
+                                  className={`inline-flex items-center gap-1 px-1.5 sm:px-2 py-0.5 rounded font-badge-sm text-[10px] font-semibold border leading-tight truncate max-w-full ${doc.corTipo}`}
+                                  title={doc.tipo}
                                 >
-                                  <span className="material-symbols-outlined text-[12px]">
+                                  <span className="material-symbols-outlined text-[11px] sm:text-[12px] shrink-0">
                                     {doc.icone}
                                   </span>
-                                  <span>{doc.tipo}</span>
+                                  <span className="truncate">{doc.tipo}</span>
                                 </span>
                               </td>
 
                               {/* Data */}
-                              <td className="py-2.5 px-3 font-data-mono text-on-surface font-medium">
+                              <td className="py-2 px-2 font-data-mono text-on-surface font-medium whitespace-nowrap overflow-hidden">
                                 <div
-                                  className="flex items-center gap-1.5"
+                                  className="flex items-center gap-1 truncate"
                                   title={doc.dataHora || doc.data}
                                 >
-                                  <span className="material-symbols-outlined text-[14px] text-outline">
+                                  <span className="material-symbols-outlined text-[13px] text-outline shrink-0 hidden sm:inline">
                                     calendar_today
                                   </span>
-                                  <span>{doc.data}</span>
+                                  <span className="text-[11px] sm:text-xs truncate">{doc.data}</span>
                                 </div>
                               </td>
 
                               {/* Usuário que anexou */}
-                              <td className="py-2.5 px-3">
-                                <div className="flex items-center gap-1.5">
-                                  <div className="w-5 h-5 rounded-full bg-surface-container-high flex items-center justify-center text-[10px] font-bold text-primary">
+                              <td className="py-2 px-2 min-w-0 overflow-hidden">
+                                <div className="flex items-center gap-1.5 min-w-0" title={doc.usuario}>
+                                  <div className="w-5 h-5 rounded-full bg-surface-container-high flex items-center justify-center text-[10px] font-bold text-primary shrink-0">
                                     {doc.usuario.charAt(0)}
                                   </div>
-                                  <span className="text-on-surface font-medium text-xs">
+                                  <span className="text-on-surface font-medium text-xs truncate block min-w-0">
                                     {doc.usuario}
                                   </span>
                                 </div>
                               </td>
 
-                              {/* Ações: Visualizar, Baixar, Substituir e Excluir */}
-                              <td className="py-2.5 px-3 text-right">
-                                <div className="flex items-center justify-end gap-1.5 flex-wrap">
+                              {/* Ações: Visualizar, Baixar, Substituir e Excluir (somente ícones) */}
+                              <td className="py-2 px-2 text-right whitespace-nowrap overflow-hidden">
+                                <div className="flex items-center justify-end gap-1">
                                   <button
                                     type="button"
                                     onClick={() => setPreviewDoc(doc)}
-                                    className="px-2.5 py-1 rounded-md bg-surface-container hover:bg-primary hover:text-surface text-primary font-semibold text-xs flex items-center gap-1 transition-colors cursor-pointer shadow-2xs"
-                                    title={`Visualizar ${doc.nomeArquivo}`}
+                                    className="w-6.5 h-6.5 sm:w-7 sm:h-7 rounded-md bg-surface-container/70 hover:bg-primary/10 text-primary flex items-center justify-center transition-colors cursor-pointer shadow-2xs shrink-0"
+                                    title="Visualizar"
+                                    aria-label="Visualizar"
                                   >
-                                    <span className="material-symbols-outlined text-[15px]">
+                                    <span className="material-symbols-outlined text-[16px]">
                                       visibility
                                     </span>
-                                    <span>Visualizar</span>
                                   </button>
 
                                   <button
                                     type="button"
                                     onClick={() => handleDownloadMockDoc(doc)}
-                                    className="px-2.5 py-1 rounded-md bg-surface-container hover:bg-secondary hover:text-on-secondary text-on-surface-variant font-semibold text-xs flex items-center gap-1 transition-colors cursor-pointer shadow-2xs"
-                                    title={`Baixar ${doc.nomeArquivo}`}
+                                    className="w-6.5 h-6.5 sm:w-7 sm:h-7 rounded-md bg-surface-container/70 hover:bg-secondary/10 text-on-surface-variant hover:text-secondary flex items-center justify-center transition-colors cursor-pointer shadow-2xs shrink-0"
+                                    title="Baixar"
+                                    aria-label="Baixar"
                                   >
-                                    <span className="material-symbols-outlined text-[15px]">
+                                    <span className="material-symbols-outlined text-[16px]">
                                       download
                                     </span>
-                                    <span>Baixar</span>
                                   </button>
 
                                   <button
                                     type="button"
                                     onClick={() => handleOpenReplaceDoc(doc)}
-                                    className="px-2.5 py-1 rounded-md bg-surface-container hover:bg-amber-100 hover:text-amber-900 text-on-surface-variant font-semibold text-xs flex items-center gap-1 transition-colors cursor-pointer shadow-2xs"
-                                    title={`Substituir ${doc.nomeArquivo}`}
+                                    className="w-6.5 h-6.5 sm:w-7 sm:h-7 rounded-md bg-surface-container/70 hover:bg-amber-100 hover:text-amber-800 text-on-surface-variant flex items-center justify-center transition-colors cursor-pointer shadow-2xs shrink-0"
+                                    title="Substituir"
+                                    aria-label="Substituir"
                                   >
-                                    <span className="material-symbols-outlined text-[15px]">
+                                    <span className="material-symbols-outlined text-[16px]">
                                       sync
                                     </span>
-                                    <span>Substituir</span>
                                   </button>
 
                                   <button
                                     type="button"
                                     onClick={() => setDeletingDoc(doc)}
-                                    className="px-2.5 py-1 rounded-md bg-surface-container hover:bg-error/15 hover:text-error text-on-surface-variant font-semibold text-xs flex items-center gap-1 transition-colors cursor-pointer shadow-2xs"
-                                    title={`Excluir ${doc.nomeArquivo}`}
+                                    className="w-6.5 h-6.5 sm:w-7 sm:h-7 rounded-md bg-surface-container/70 hover:bg-error/15 hover:text-error text-on-surface-variant flex items-center justify-center transition-colors cursor-pointer shadow-2xs shrink-0"
+                                    title="Excluir"
+                                    aria-label="Excluir"
                                   >
-                                    <span className="material-symbols-outlined text-[15px]">
+                                    <span className="material-symbols-outlined text-[16px]">
                                       delete
                                     </span>
-                                    <span>Excluir</span>
                                   </button>
                                 </div>
                               </td>
