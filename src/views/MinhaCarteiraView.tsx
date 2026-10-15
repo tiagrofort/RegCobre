@@ -24,7 +24,7 @@ export const MinhaCarteiraView: React.FC<MinhaCarteiraViewProps> = ({
   const [activeFilterPill, setActiveFilterPill] = useState<
     'all' | 'delayed60' | 'promise' | 'return_today' | 'no_contact' | 'worked_today'
   >('all');
-  const [isDrawerCollapsed, setIsDrawerCollapsed] = useState(false);
+  const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [toastMsg, setToastMsg] = useState<string | null>(null);
 
   const selectedDebt = allDebts.find((d) => d.id === selectedDebtId) || allDebts[0];
@@ -70,21 +70,23 @@ export const MinhaCarteiraView: React.FC<MinhaCarteiraViewProps> = ({
     return true;
   });
 
-  const handleSelectDebtForDrawer = (d: Debt) => {
+  const handleSelectDebt = (d: Debt) => {
     setSelectedDebtId(d.id);
-    if (isDrawerCollapsed) {
-      setIsDrawerCollapsed(false);
-    }
+  };
+
+  const handleOpenDrawerForDebt = (d: Debt) => {
+    setSelectedDebtId(d.id);
+    setIsDrawerOpen(true);
   };
 
   return (
-    <div className="flex flex-col w-full pb-16">
+    <div className="flex flex-col w-full max-w-full min-w-0 pb-16 overflow-x-hidden">
       {/* Top Command & Filter Deck */}
       <div className="px-space-lg py-space-md bg-surface-container-lowest shadow-sm flex flex-col gap-space-md border-b border-outline-variant/30">
         {/* Header Level 1 */}
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-space-md">
           <div className="flex items-center gap-space-md">
-            <div className="w-10 h-10 rounded-lg bg-primary-container text-surface flex items-center justify-center shadow-sm">
+            <div className="w-10 h-10 rounded-lg bg-primary-container text-surface flex items-center justify-center shadow-sm shrink-0">
               <span className="material-symbols-outlined text-[22px]">folder_special</span>
             </div>
             <div className="flex flex-col">
@@ -234,16 +236,12 @@ export const MinhaCarteiraView: React.FC<MinhaCarteiraViewProps> = ({
         </div>
       </div>
 
-      {/* Operational Work Area: Split Panel (65% Table / 35% Consultation Panel) */}
-      <div className="flex-1 flex flex-col xl:flex-row p-space-md gap-space-md items-start">
-        {/* LEFT: Collections Table */}
-        <div
-          className={`w-full transition-all bg-surface-container-lowest rounded-xl shadow-sm overflow-hidden flex flex-col border border-outline-variant/30 ${
-            isDrawerCollapsed ? 'xl:w-full' : 'xl:w-[65%]'
-          }`}
-        >
+      {/* Operational Work Area: Full Width Table */}
+      <div className="flex-1 flex flex-col p-space-md w-full min-w-0 max-w-full">
+        {/* Collections Table Container */}
+        <div className="w-full bg-surface-container-lowest rounded-xl shadow-sm overflow-hidden flex flex-col border border-outline-variant/30 min-w-0">
           {/* Table Functional Bar */}
-          <div className="px-space-md py-space-xs bg-surface-container-low flex items-center justify-between text-on-surface-variant border-b border-outline-variant/20">
+          <div className="px-space-md py-space-xs bg-surface-container-low flex flex-wrap items-center justify-between gap-2 text-on-surface-variant border-b border-outline-variant/20">
             <span className="font-label-uppercase text-label-uppercase uppercase text-xs">
               Visualizando {filteredDebts.length} de {allDebts.length} registros
             </span>
@@ -256,31 +254,31 @@ export const MinhaCarteiraView: React.FC<MinhaCarteiraViewProps> = ({
                 </strong>
               </span>
 
-              {isDrawerCollapsed && (
-                <button
-                  onClick={() => setIsDrawerCollapsed(false)}
-                  className="px-2 py-0.5 rounded bg-primary text-surface font-label-uppercase text-[10px] flex items-center gap-1 cursor-pointer"
-                >
-                  <span className="material-symbols-outlined text-[13px]">open_in_new</span>
-                  <span>Abrir Painel de Detalhes</span>
-                </button>
-              )}
+              <button
+                onClick={() => setIsDrawerOpen(true)}
+                className="px-2.5 py-1 rounded-lg bg-primary hover:bg-primary-container text-surface font-label-uppercase text-[11px] font-semibold flex items-center gap-1.5 shadow-2xs transition-colors cursor-pointer"
+                title="Abrir painel de detalhes da cobrança selecionada"
+                type="button"
+              >
+                <span className="material-symbols-outlined text-[15px]">visibility</span>
+                <span>Abrir painel de detalhes</span>
+              </button>
             </div>
           </div>
 
-          {/* Primary Data Grid */}
-          <div className="overflow-x-auto w-full">
-            <table className="w-full text-left border-collapse">
+          {/* Primary Data Grid: Strict table-fixed to eliminate page horizontal scroll */}
+          <div className="w-full overflow-hidden">
+            <table className="w-full table-fixed text-left border-collapse">
               <thead>
                 <tr className="bg-surface-container text-on-surface font-label-uppercase text-label-uppercase tracking-wider select-none sticky top-0 text-[11px]">
-                  <th className="py-2.5 px-3">Devedor &amp; CNPJ</th>
-                  <th className="py-2.5 px-3">Título / Parc</th>
-                  <th className="py-2.5 px-3">Vencimento</th>
-                  <th className="py-2.5 px-3 text-right">Valor Atual</th>
-                  <th className="py-2.5 px-3">Situação</th>
-                  <th className="py-2.5 px-3">Último Contato</th>
-                  <th className="py-2.5 px-3">Responsável</th>
-                  <th className="py-2.5 px-3 text-center">Ações</th>
+                  <th className="py-2.5 px-3 w-[22%]">Devedor &amp; CNPJ</th>
+                  <th className="py-2.5 px-3 w-[10%]">Título / Parc</th>
+                  <th className="py-2.5 px-3 w-[10%]">Vencimento</th>
+                  <th className="py-2.5 px-3 text-right w-[11%]">Valor Atual</th>
+                  <th className="py-2.5 px-3 w-[12%]">Situação</th>
+                  <th className="py-2.5 px-3 w-[14%]">Último Contato</th>
+                  <th className="py-2.5 px-3 w-[10%]">Responsável</th>
+                  <th className="py-2.5 px-3 text-center w-[11%]">Ações</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-surface-container-high font-body-sm text-body-sm">
@@ -291,36 +289,39 @@ export const MinhaCarteiraView: React.FC<MinhaCarteiraViewProps> = ({
                   return (
                     <tr
                       key={d.id}
-                      onClick={() => handleSelectDebtForDrawer(d)}
+                      onClick={() => handleSelectDebt(d)}
                       className={`transition-colors cursor-pointer group ${getDebtStatusRowClass(
                         d.status,
                         isSelected
                       )}`}
                     >
                       <td className="py-2 px-3">
-                        <div className="flex flex-col">
-                          <div className="flex items-center gap-1.5">
+                        <div className="flex flex-col min-w-0">
+                          <div className="flex items-center gap-1.5 min-w-0">
                             <span
                               className={`w-1.5 h-1.5 rounded-full shrink-0 ${statusStyle.indicatorClass}`}
                               title={`Status: ${statusStyle.label}`}
                             />
-                            <span className="font-title-md text-title-md font-semibold text-on-surface truncate max-w-[180px] group-hover:text-primary">
+                            <span
+                              className="font-title-md text-title-md font-semibold text-on-surface truncate group-hover:text-primary"
+                              title={d.debtorName}
+                            >
                               {d.debtorName}
                             </span>
-                            <span className="px-1 py-0.2 rounded bg-surface-container-highest text-on-surface font-badge-sm text-badge-sm">
+                            <span className="px-1 py-0.2 rounded bg-surface-container-highest text-on-surface font-badge-sm text-badge-sm shrink-0">
                               {d.debtorType}
                             </span>
                           </div>
-                          <span className="font-data-mono text-[11px] text-on-surface-variant">
+                          <span className="font-data-mono text-[11px] text-on-surface-variant truncate block">
                             CNPJ: {d.debtorCnpjCpf} • ERP {d.erpCode}
                           </span>
                           {(() => {
                             const emp = debtService.getEmpresaById(d.empresaId);
                             return emp ? (
-                              <span className="text-[10px] text-primary/80 font-medium flex items-center gap-1 mt-0.5">
-                                <span className="material-symbols-outlined text-[12px] text-primary">domain</span>
-                                <span>{emp.nomeFantasia}</span>
-                                <span className="text-[9px] px-1 py-0.2 rounded bg-surface-container text-on-surface-variant font-bold uppercase">
+                              <span className="text-[10px] text-primary/80 font-medium flex items-center gap-1 mt-0.5 truncate">
+                                <span className="material-symbols-outlined text-[12px] text-primary shrink-0">domain</span>
+                                <span className="truncate">{emp.nomeFantasia}</span>
+                                <span className="text-[9px] px-1 py-0.2 rounded bg-surface-container text-on-surface-variant font-bold uppercase shrink-0">
                                   {emp.modoCarteira}
                                 </span>
                               </span>
@@ -330,90 +331,118 @@ export const MinhaCarteiraView: React.FC<MinhaCarteiraViewProps> = ({
                       </td>
 
                       <td className="py-2 px-3">
-                        <div className="flex flex-col">
+                        <div className="flex flex-col min-w-0">
                           <button
                             type="button"
                             onClick={(e) => {
                               e.stopPropagation();
                               onSelectDebt(d.id);
                             }}
-                            className="font-data-mono font-semibold text-primary hover:underline text-left cursor-pointer"
+                            className="font-data-mono font-semibold text-primary hover:underline text-left cursor-pointer truncate block"
+                            title="Abrir Ficha da Cobrança"
                           >
                             {d.titleNumber}
                           </button>
-                          <span className="text-[11px] text-on-surface-variant font-data-mono">
+                          <span className="text-[11px] text-on-surface-variant font-data-mono truncate block">
                             Parc. {d.installment}
                           </span>
                         </div>
                       </td>
 
                       <td className="py-2 px-3">
-                        <div className="flex flex-col">
-                          <span className="font-data-mono text-on-surface">{d.dueDate}</span>
+                        <div className="flex flex-col min-w-0">
+                          <span className="font-data-mono text-on-surface truncate block">{d.dueDate}</span>
                           <span
-                            className={`font-label-uppercase text-[10px] font-semibold flex items-center gap-0.5 ${
+                            className={`font-label-uppercase text-[10px] font-semibold flex items-center gap-0.5 truncate ${
                               d.daysOverdue > 0 ? 'text-error' : 'text-secondary'
                             }`}
                           >
                             <span
-                              className={`w-1.5 h-1.5 rounded-full ${
+                              className={`w-1.5 h-1.5 rounded-full shrink-0 ${
                                 d.daysOverdue > 0 ? 'bg-error' : 'bg-secondary'
                               }`}
                             ></span>
-                            {d.daysOverdue > 0 ? `${d.daysOverdue} dias atraso` : 'A vencer'}
+                            <span className="truncate">
+                              {d.daysOverdue > 0 ? `${d.daysOverdue} dias atraso` : 'A vencer'}
+                            </span>
                           </span>
                         </div>
                       </td>
 
                       <td className="py-2 px-3 text-right">
-                        <div className="flex flex-col items-end">
-                          <span className="font-data-mono font-semibold text-primary">
+                        <div className="flex flex-col items-end min-w-0">
+                          <span className="font-data-mono font-semibold text-primary truncate block">
                             R$ {d.currentValue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                           </span>
-                          <span className="font-data-mono text-[10px] text-on-surface-variant">
+                          <span className="font-data-mono text-[10px] text-on-surface-variant truncate block">
                             Orig: R$ {d.originalValue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                           </span>
                         </div>
                       </td>
 
                       <td className="py-2 px-3">
-                        <span className="px-2 py-0.5 rounded-full bg-surface-container font-label-uppercase text-[10px] text-on-surface font-semibold">
-                          {d.statusLabel}
-                        </span>
+                        <div className="min-w-0">
+                          <span
+                            className="px-2 py-0.5 rounded-full bg-surface-container font-label-uppercase text-[10px] text-on-surface font-semibold truncate block text-center"
+                            title={d.statusLabel}
+                          >
+                            {d.statusLabel}
+                          </span>
+                        </div>
                       </td>
 
                       <td className="py-2 px-3">
-                        <div className="flex flex-col text-xs">
-                          <span className="font-medium text-on-surface">
+                        <div className="flex flex-col text-xs min-w-0">
+                          <span
+                            className="font-medium text-on-surface truncate block"
+                            title={d.lastContact?.result || 'Sem contato'}
+                          >
                             {d.lastContact?.result || 'Sem contato'}
                           </span>
-                          <span className="text-[10px] text-on-surface-variant font-data-mono">
+                          <span className="text-[10px] text-on-surface-variant font-data-mono truncate block">
                             {d.lastContact?.date || '-'} ({d.lastContact?.channel || '-'})
                           </span>
                         </div>
                       </td>
 
-                      <td className="py-2 px-3 text-on-surface-variant text-xs">
-                        {d.assignedTo.name}
+                      <td className="py-2 px-3">
+                        <div className="min-w-0">
+                          <span className="text-on-surface-variant text-xs truncate block" title={d.assignedTo.name}>
+                            {d.assignedTo.name}
+                          </span>
+                        </div>
                       </td>
 
                       <td className="py-2 px-3 text-center" onClick={(e) => e.stopPropagation()}>
-                        <div className="flex items-center justify-center gap-1">
+                        <div className="flex items-center justify-center gap-1 shrink-0">
+                          {/* Botão de ação explícito: Abrir painel de detalhes */}
                           <button
-                            onClick={() => onSelectDebt(d.id)}
-                            className="px-2.5 h-7 rounded bg-primary hover:bg-primary-container text-surface font-label-uppercase text-[11px] font-semibold flex items-center gap-1 shadow-sm transition-colors cursor-pointer"
-                            title="Abrir Ficha da Cobrança"
+                            onClick={() => handleOpenDrawerForDebt(d)}
+                            className="w-7 h-7 rounded bg-surface-container hover:bg-primary hover:text-surface text-on-surface flex items-center justify-center transition-colors cursor-pointer shadow-2xs"
+                            title="Abrir painel de detalhes"
+                            aria-label="Abrir painel de detalhes"
                             type="button"
                           >
-                            <span className="material-symbols-outlined text-[14px]">folder_open</span>
+                            <span className="material-symbols-outlined text-[15px]">visibility</span>
+                          </button>
+
+                          <button
+                            onClick={() => onSelectDebt(d.id)}
+                            className="px-2 h-7 rounded bg-primary hover:bg-primary-container text-surface font-label-uppercase text-[10px] font-semibold flex items-center gap-0.5 shadow-2xs transition-colors cursor-pointer"
+                            title="Abrir Ficha da Cobrança"
+                            aria-label="Abrir Ficha da Cobrança"
+                            type="button"
+                          >
+                            <span className="material-symbols-outlined text-[13px]">folder_open</span>
                             <span>Ficha</span>
                           </button>
 
                           {onOpenFastLogModal && (
                             <button
                               onClick={() => onOpenFastLogModal(d)}
-                              className="w-7 h-7 rounded bg-surface-container hover:bg-surface-variant text-on-surface flex items-center justify-center transition-colors cursor-pointer"
+                              className="w-7 h-7 rounded bg-surface-container hover:bg-surface-variant text-on-surface flex items-center justify-center transition-colors cursor-pointer shadow-2xs"
                               title="Registrar Contato Rápido"
+                              aria-label="Registrar Contato Rápido"
                               type="button"
                             >
                               <span className="material-symbols-outlined text-[15px]">edit_note</span>
@@ -428,208 +457,224 @@ export const MinhaCarteiraView: React.FC<MinhaCarteiraViewProps> = ({
             </table>
           </div>
         </div>
+      </div>
 
-        {/* RIGHT: Consultation & History Panel (No duplicated form!) */}
-        {!isDrawerCollapsed && selectedDebt && (
-          <div className="w-full xl:w-[35%] bg-surface-container-lowest rounded-xl shadow-md overflow-hidden flex flex-col transition-all border border-outline-variant/30">
-            {/* Header: Contexto da Cobrança */}
-            <div className="p-space-md bg-primary text-surface flex flex-col gap-space-xs">
-              <div className="flex items-center justify-between">
-                <span className="text-secondary-fixed font-data-mono text-[11px] font-semibold uppercase">
-                  Consulta de Cobrança • Título {selectedDebt.titleNumber}
-                </span>
-                <button
-                  onClick={() => setIsDrawerCollapsed(true)}
-                  className="w-6 h-6 rounded flex items-center justify-center hover:bg-primary-container text-surface transition-colors cursor-pointer"
-                  title="Recolher Painel Lateral"
-                  type="button"
-                >
-                  <span className="material-symbols-outlined text-[16px]">close_fullscreen</span>
-                </button>
-              </div>
+      {/* Consultation & History Panel (Overlay Drawer - sobreposto ao conteúdo sem diminuir a tabela) */}
+      {isDrawerOpen && selectedDebt && (
+        <div className="fixed inset-0 z-50 overflow-hidden" role="dialog" aria-modal="true" aria-labelledby="drawer-title">
+          {/* Backdrop */}
+          <div
+            className="fixed inset-0 bg-black/40 backdrop-blur-xs transition-opacity duration-200"
+            onClick={() => setIsDrawerOpen(false)}
+            aria-hidden="true"
+          />
 
-              <div>
-                <h2 className="font-headline-sm font-semibold tracking-tight text-surface truncate">
-                  {selectedDebt.debtorName}
-                </h2>
-                <div className="flex items-center justify-between text-on-primary-container text-xs font-data-mono mt-0.5">
-                  <span>CNPJ: {selectedDebt.debtorCnpjCpf}</span>
-                  <span className="text-secondary-fixed">ERP {selectedDebt.erpCode}</span>
+          {/* Drawer Panel Container */}
+          <div className="fixed inset-y-0 right-0 max-w-full flex pl-6 sm:pl-12">
+            <div className="w-screen max-w-md xl:max-w-lg bg-surface-container-lowest shadow-2xl flex flex-col border-l border-outline-variant/30 h-full overflow-hidden animate-in slide-in-from-right duration-200">
+              {/* Header: Contexto da Cobrança */}
+              <div className="p-space-md bg-primary text-surface flex flex-col gap-space-xs shrink-0">
+                <div className="flex items-center justify-between">
+                  <span className="text-secondary-fixed font-data-mono text-[11px] font-semibold uppercase">
+                    Consulta de Cobrança • Título {selectedDebt.titleNumber}
+                  </span>
+                  <button
+                    onClick={() => setIsDrawerOpen(false)}
+                    className="w-7 h-7 rounded-lg flex items-center justify-center hover:bg-white/20 text-surface transition-colors cursor-pointer"
+                    title="Fechar painel de detalhes"
+                    aria-label="Fechar painel de detalhes"
+                    type="button"
+                  >
+                    <span className="material-symbols-outlined text-[20px]">close</span>
+                  </button>
                 </div>
-              </div>
 
-              {/* Grid Financeiro Rápido */}
-              <div className="grid grid-cols-3 gap-2 mt-2 bg-primary-container/80 p-2.5 rounded-lg text-center border border-surface/10">
                 <div>
-                  <span className="block text-[10px] font-label-uppercase text-on-primary-container">
-                    VALOR ORIGINAL
-                  </span>
-                  <span className="font-data-mono font-semibold text-xs text-surface">
-                    R$ {selectedDebt.originalValue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-                  </span>
+                  <h2 id="drawer-title" className="font-headline-sm font-semibold tracking-tight text-surface truncate">
+                    {selectedDebt.debtorName}
+                  </h2>
+                  <div className="flex items-center justify-between text-on-primary-container text-xs font-data-mono mt-0.5">
+                    <span>CNPJ: {selectedDebt.debtorCnpjCpf}</span>
+                    <span className="text-secondary-fixed">ERP {selectedDebt.erpCode}</span>
+                  </div>
                 </div>
-                <div>
-                  <span className="block text-[10px] font-label-uppercase text-on-primary-container">
-                    VENCIMENTO
-                  </span>
-                  <span className="font-data-mono font-semibold text-xs text-secondary-fixed">
-                    {selectedDebt.dueDate} ({selectedDebt.daysOverdue}d)
-                  </span>
+
+                {/* Grid Financeiro Rápido */}
+                <div className="grid grid-cols-3 gap-2 mt-2 bg-primary-container/80 p-2.5 rounded-lg text-center border border-surface/10">
+                  <div>
+                    <span className="block text-[10px] font-label-uppercase text-on-primary-container">
+                      VALOR ORIGINAL
+                    </span>
+                    <span className="font-data-mono font-semibold text-xs text-surface">
+                      R$ {selectedDebt.originalValue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="block text-[10px] font-label-uppercase text-on-primary-container">
+                      VENCIMENTO
+                    </span>
+                    <span className="font-data-mono font-semibold text-xs text-secondary-fixed">
+                      {selectedDebt.dueDate} ({selectedDebt.daysOverdue}d)
+                    </span>
+                  </div>
+                  <div>
+                    <span className="block text-[10px] font-label-uppercase text-on-primary-container">
+                      VALOR ATUALIZADO
+                    </span>
+                    <span className="font-data-mono font-bold text-xs text-surface">
+                      R$ {selectedDebt.currentValue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                    </span>
+                  </div>
                 </div>
-                <div>
-                  <span className="block text-[10px] font-label-uppercase text-on-primary-container">
-                    VALOR ATUALIZADO
+
+                {/* Responsável Atual */}
+                <div className="flex items-center justify-between bg-primary-container/40 px-2.5 py-1.5 rounded text-xs text-on-primary-container mt-1">
+                  <span className="flex items-center gap-1.5">
+                    <span className="material-symbols-outlined text-[15px] text-secondary-fixed">
+                      support_agent
+                    </span>
+                    <span>Responsável: <strong>{selectedDebt.assignedTo.name}</strong></span>
                   </span>
-                  <span className="font-data-mono font-bold text-xs text-surface">
-                    R$ {selectedDebt.currentValue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                  <span className="px-2 py-0.5 rounded bg-surface/20 text-surface text-[10px] font-semibold">
+                    {selectedDebt.statusLabel}
                   </span>
                 </div>
               </div>
 
-              {/* Responsável Atual */}
-              <div className="flex items-center justify-between bg-primary-container/40 px-2.5 py-1.5 rounded text-xs text-on-primary-container mt-1">
-                <span className="flex items-center gap-1.5">
-                  <span className="material-symbols-outlined text-[15px] text-secondary-fixed">
-                    support_agent
-                  </span>
-                  <span>Responsável: <strong>{selectedDebt.assignedTo.name}</strong></span>
-                </span>
-                <span className="px-2 py-0.5 rounded bg-surface/20 text-surface text-[10px] font-semibold">
-                  {selectedDebt.statusLabel}
-                </span>
-              </div>
-            </div>
+              {/* Body: Dados Cadastrais + Histórico Permanente */}
+              <div className="p-space-md flex flex-col gap-space-md overflow-y-auto flex-1">
+                {/* Contato Principal do Devedor */}
+                {selectedDebtor && (
+                  <div className="p-3 bg-surface-container-low rounded-lg text-xs space-y-1.5 border border-outline-variant/20">
+                    <span className="text-[10px] font-label-uppercase text-outline font-bold block mb-1">
+                      CONTATO PRINCIPAL / FINANCEIRO
+                    </span>
+                    <div className="font-semibold text-primary">{selectedDebtor.mainContact.name} ({selectedDebtor.mainContact.role})</div>
 
-            {/* Body: Dados Cadastrais + Histórico Permanente */}
-            <div className="p-space-md flex flex-col gap-space-md overflow-y-auto max-h-[600px]">
-              {/* Contato Principal do Devedor */}
-              {selectedDebtor && (
-                <div className="p-3 bg-surface-container-low rounded-lg text-xs space-y-1.5 border border-outline-variant/20">
-                  <span className="text-[10px] font-label-uppercase text-outline font-bold block mb-1">
-                    CONTATO PRINCIPAL / FINANCEIRO
-                  </span>
-                  <div className="font-semibold text-primary">{selectedDebtor.mainContact.name} ({selectedDebtor.mainContact.role})</div>
-                  
-                  {/* Telefones da Coleção Oficial do Devedor */}
-                  {selectedDebtor.phones && selectedDebtor.phones.length > 0 ? (
-                    <div className="flex flex-col gap-1 pt-0.5">
-                      {selectedDebtor.phones
-                        .filter((p) => p.active)
-                        .map((ph) => (
-                          <div key={ph.id} className="flex items-center justify-between text-xs">
-                            <div className="flex items-center gap-1.5">
-                              <span className="font-data-mono font-bold text-on-surface">
-                                {ph.number}
-                              </span>
-                              <span className="px-1.5 py-0.2 rounded bg-surface-container text-[10px] text-on-surface-variant font-medium">
-                                {ph.type}
-                              </span>
-                              {ph.hasWhatsApp && (
-                                <span className="inline-flex items-center text-emerald-700 font-bold text-[10px] gap-0.5" title="WhatsApp Ativo">
-                                  <span className="material-symbols-outlined text-[13px]">chat</span>
-                                  <span>WhatsApp</span>
+                    {/* Telefones da Coleção Oficial do Devedor */}
+                    {selectedDebtor.phones && selectedDebtor.phones.length > 0 ? (
+                      <div className="flex flex-col gap-1 pt-0.5">
+                        {selectedDebtor.phones
+                          .filter((p) => p.active)
+                          .map((ph) => (
+                            <div key={ph.id} className="flex items-center justify-between text-xs">
+                              <div className="flex items-center gap-1.5">
+                                <span className="font-data-mono font-bold text-on-surface">
+                                  {ph.number}
+                                </span>
+                                <span className="px-1.5 py-0.2 rounded bg-surface-container text-[10px] text-on-surface-variant font-medium">
+                                  {ph.type}
+                                </span>
+                                {ph.hasWhatsApp && (
+                                  <span className="inline-flex items-center text-emerald-700 font-bold text-[10px] gap-0.5" title="WhatsApp Ativo">
+                                    <span className="material-symbols-outlined text-[13px]">chat</span>
+                                    <span>WhatsApp</span>
+                                  </span>
+                                )}
+                              </div>
+                              {ph.description && (
+                                <span className="text-[10px] text-on-surface-variant truncate max-w-[120px]">
+                                  {ph.description}
                                 </span>
                               )}
                             </div>
-                            {ph.description && (
-                              <span className="text-[10px] text-on-surface-variant truncate max-w-[120px]">
-                                {ph.description}
-                              </span>
-                            )}
-                          </div>
-                        ))}
-                    </div>
-                  ) : (selectedDebtor.mainContact.phoneMobile || selectedDebtor.mainContact.phoneFixed) ? (
-                    <div className="text-on-surface-variant flex items-center gap-3">
-                      {selectedDebtor.mainContact.phoneFixed && <span>{selectedDebtor.mainContact.phoneFixed}</span>}
-                      {selectedDebtor.mainContact.phoneMobile && (
-                        <span className="text-secondary font-semibold">
-                          {selectedDebtor.mainContact.phoneMobile} {selectedDebtor.mainContact.hasWhatsApp ? '(WhatsApp)' : ''}
-                        </span>
-                      )}
-                    </div>
-                  ) : (
-                    <div className="text-xs text-on-surface-variant italic py-0.5">
-                      Nenhum telefone cadastrado.
-                    </div>
-                  )}
-
-                  <div className="text-on-surface-variant font-mono text-[11px] pt-0.5">{selectedDebtor.mainContact.email}</div>
-                </div>
-              )}
-
-              {/* Botão de Destaque para abrir a Ficha Oficial da Cobrança */}
-              <div className="flex flex-col gap-2">
-                <button
-                  type="button"
-                  onClick={() => onSelectDebt(selectedDebt.id)}
-                  className="w-full h-10 rounded-lg bg-secondary hover:bg-on-secondary-container text-on-secondary font-title-md text-xs font-bold flex items-center justify-center gap-2 shadow-md transition-all active:scale-[0.99] cursor-pointer"
-                >
-                  <span className="material-symbols-outlined text-[18px]">add_call</span>
-                  <span>[ FAZ ] Abrir Ficha da Cobrança Completa</span>
-                </button>
-
-                {onOpenFastLogModal && (
-                  <button
-                    type="button"
-                    onClick={() => onOpenFastLogModal(selectedDebt)}
-                    className="w-full h-8 rounded-lg bg-surface-container hover:bg-surface-variant text-on-surface font-title-md text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors cursor-pointer border border-outline-variant/30"
-                  >
-                    <span className="material-symbols-outlined text-[16px]">edit_note</span>
-                    <span>Registrar Contato Rápido</span>
-                  </button>
-                )}
-              </div>
-
-              {/* Histórico Permanente da Cobrança */}
-              <div className="flex flex-col gap-2">
-                <div className="flex items-center justify-between border-b border-outline-variant/20 pb-1">
-                  <span className="font-label-uppercase text-outline font-bold text-[11px] uppercase">
-                    Histórico Permanente ({selectedDebt.history.length})
-                  </span>
-                  <span className="text-[10px] text-on-surface-variant">Preservação perpétua</span>
-                </div>
-
-                <div className="space-y-2">
-                  {selectedDebt.history.map((h) => (
-                    <div
-                      key={h.id}
-                      className="p-2.5 bg-surface-container-low rounded-lg text-xs border border-outline-variant/20 flex flex-col gap-1"
-                    >
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-1.5">
-                          <span className="font-semibold text-primary">{h.operatorName}</span>
-                          <span className="px-1.5 py-0.2 rounded bg-surface-container text-[10px]">
-                            {h.channel}
-                          </span>
-                        </div>
-                        <span className="font-data-mono text-[10px] text-on-surface-variant">
-                          {h.dateFormatted} às {h.timeFormatted}
-                        </span>
+                          ))}
                       </div>
-
-                      <div className="flex items-center justify-between">
-                        <span className="font-bold text-secondary text-[11px]">{h.result}</span>
-                        {h.attachedPromise && (
-                          <span className="text-[10px] text-secondary font-semibold font-data-mono">
-                            PTP R$ {h.attachedPromise.promisedValue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })} em {h.attachedPromise.promisedDate}
+                    ) : (selectedDebtor.mainContact.phoneMobile || selectedDebtor.mainContact.phoneFixed) ? (
+                      <div className="text-on-surface-variant flex items-center gap-3">
+                        {selectedDebtor.mainContact.phoneFixed && <span>{selectedDebtor.mainContact.phoneFixed}</span>}
+                        {selectedDebtor.mainContact.phoneMobile && (
+                          <span className="text-secondary font-semibold">
+                            {selectedDebtor.mainContact.phoneMobile} {selectedDebtor.mainContact.hasWhatsApp ? '(WhatsApp)' : ''}
                           </span>
                         )}
                       </div>
+                    ) : (
+                      <div className="text-xs text-on-surface-variant italic py-0.5">
+                        Nenhum telefone cadastrado.
+                      </div>
+                    )}
 
-                      {h.notes && (
-                        <p className="text-on-surface-variant text-[11px] leading-relaxed mt-0.5">
-                          {h.notes}
-                        </p>
-                      )}
-                    </div>
-                  ))}
+                    <div className="text-on-surface-variant font-mono text-[11px] pt-0.5">{selectedDebtor.mainContact.email}</div>
+                  </div>
+                )}
+
+                {/* Botão de Destaque para abrir a Ficha Oficial da Cobrança */}
+                <div className="flex flex-col gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsDrawerOpen(false);
+                      onSelectDebt(selectedDebt.id);
+                    }}
+                    className="w-full h-10 rounded-lg bg-secondary hover:bg-on-secondary-container text-on-secondary font-title-md text-xs font-bold flex items-center justify-center gap-2 shadow-md transition-all active:scale-[0.99] cursor-pointer"
+                  >
+                    <span className="material-symbols-outlined text-[18px]">add_call</span>
+                    <span>[ FAZ ] Abrir Ficha da Cobrança Completa</span>
+                  </button>
+
+                  {onOpenFastLogModal && (
+                    <button
+                      type="button"
+                      onClick={() => onOpenFastLogModal(selectedDebt)}
+                      className="w-full h-8 rounded-lg bg-surface-container hover:bg-surface-variant text-on-surface font-title-md text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors cursor-pointer border border-outline-variant/30"
+                    >
+                      <span className="material-symbols-outlined text-[16px]">edit_note</span>
+                      <span>Registrar Contato Rápido</span>
+                    </button>
+                  )}
+                </div>
+
+                {/* Histórico Permanente da Cobrança */}
+                <div className="flex flex-col gap-2">
+                  <div className="flex items-center justify-between border-b border-outline-variant/20 pb-1">
+                    <span className="font-label-uppercase text-outline font-bold text-[11px] uppercase">
+                      Histórico Permanente ({selectedDebt.history.length})
+                    </span>
+                    <span className="text-[10px] text-on-surface-variant">Preservação perpétua</span>
+                  </div>
+
+                  <div className="space-y-2">
+                    {selectedDebt.history.map((h) => (
+                      <div
+                        key={h.id}
+                        className="p-2.5 bg-surface-container-low rounded-lg text-xs border border-outline-variant/20 flex flex-col gap-1"
+                      >
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-1.5">
+                            <span className="font-semibold text-primary">{h.operatorName}</span>
+                            <span className="px-1.5 py-0.2 rounded bg-surface-container text-[10px]">
+                              {h.channel}
+                            </span>
+                          </div>
+                          <span className="font-data-mono text-[10px] text-on-surface-variant">
+                            {h.dateFormatted} às {h.timeFormatted}
+                          </span>
+                        </div>
+
+                        <div className="flex items-center justify-between">
+                          <span className="font-bold text-secondary text-[11px]">{h.result}</span>
+                          {h.attachedPromise && (
+                            <span className="text-[10px] text-secondary font-semibold font-data-mono">
+                              PTP R$ {h.attachedPromise.promisedValue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })} em {h.attachedPromise.promisedDate}
+                            </span>
+                          )}
+                        </div>
+
+                        {h.notes && (
+                          <p className="text-on-surface-variant text-[11px] leading-relaxed mt-0.5">
+                            {h.notes}
+                          </p>
+                        )}
+                      </div>
+                    ))}
+                  </div>
                 </div>
               </div>
             </div>
           </div>
-        )}
-      </div>
+        </div>
+      )}
 
       {/* Toast notification */}
       {toastMsg && (
