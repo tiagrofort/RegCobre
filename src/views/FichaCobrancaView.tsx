@@ -22,6 +22,8 @@ interface FichaCobrancaViewProps {
   onOpenFinishModal: () => void;
   onNavigateToDebtor?: (debtorId: string) => void;
   onOpenFastLog?: (debt?: Debt) => void;
+  isModal?: boolean;
+  onCloseModal?: () => void;
 }
 
 // Interface e dados mockados para Documentos da Cobrança
@@ -177,6 +179,8 @@ export const FichaCobrancaView: React.FC<FichaCobrancaViewProps> = ({
   onOpenFinishModal,
   onNavigateToDebtor,
   onOpenFastLog: _onOpenFastLog,
+  isModal = false,
+  onCloseModal,
 }) => {
   const { currentUser } = useAuth();
 
@@ -764,6 +768,10 @@ export const FichaCobrancaView: React.FC<FichaCobrancaViewProps> = ({
   };
 
   const handleBackAction = () => {
+    if (isModal && onCloseModal) {
+      onCloseModal();
+      return;
+    }
     if (onBack) {
       onBack();
     } else {
@@ -810,16 +818,24 @@ export const FichaCobrancaView: React.FC<FichaCobrancaViewProps> = ({
               onClick={handleBackAction}
               className="inline-flex items-center gap-1.5 h-8 px-3 rounded-lg bg-surface-container hover:bg-surface-variant text-primary font-title-md text-xs font-semibold transition-colors cursor-pointer border border-outline-variant/30"
               type="button"
-              title={`Voltar para ${getOriginScreenLabel()}`}
+              title={isModal ? 'Fechar Ficha e voltar ao Painel da Carteira' : `Voltar para ${getOriginScreenLabel()}`}
             >
-              <span className="material-symbols-outlined text-[16px]">arrow_back</span>
-              <span>Voltar para {getOriginScreenLabel()}</span>
+              <span className="material-symbols-outlined text-[16px]">
+                {isModal ? 'close' : 'arrow_back'}
+              </span>
+              <span>{isModal ? 'Fechar / Voltar ao Painel' : `Voltar para ${getOriginScreenLabel()}`}</span>
             </button>
 
             <span className="text-outline-variant">•</span>
 
             <button
-              onClick={onBackToTodayWork}
+              onClick={() => {
+                if (isModal && onCloseModal) {
+                  onCloseModal();
+                } else {
+                  onBackToTodayWork();
+                }
+              }}
               className="inline-flex items-center gap-1 text-on-surface-variant hover:text-primary transition-colors text-xs cursor-pointer"
               type="button"
             >
@@ -830,7 +846,13 @@ export const FichaCobrancaView: React.FC<FichaCobrancaViewProps> = ({
             <span className="text-outline-variant">•</span>
 
             <button
-              onClick={onBackToPortfolio}
+              onClick={() => {
+                if (isModal && onCloseModal) {
+                  onCloseModal();
+                } else {
+                  onBackToPortfolio();
+                }
+              }}
               className="inline-flex items-center gap-1 text-on-surface-variant hover:text-primary transition-colors text-xs cursor-pointer"
               type="button"
             >
@@ -3184,7 +3206,7 @@ export const FichaCobrancaView: React.FC<FichaCobrancaViewProps> = ({
       {/* MODAL: ADICIONAR / EDITAR TELEFONE NO DEVEDOR                       */}
       {/* =================================================================== */}
       {isPhoneModalOpen && (
-        <div className="fixed inset-0 bg-primary/40 backdrop-blur-xs z-50 flex items-center justify-center p-4">
+        <div className="fixed inset-0 bg-primary/40 backdrop-blur-xs z-[70] flex items-center justify-center p-4">
           <div className="bg-surface-container-lowest rounded-xl shadow-2xl max-w-md w-full border border-outline-variant/30 overflow-hidden animate-fade-in">
             <div className="p-4 bg-primary text-surface flex items-center justify-between">
               <div className="flex items-center gap-2">
@@ -3314,7 +3336,7 @@ export const FichaCobrancaView: React.FC<FichaCobrancaViewProps> = ({
       {/* MODAL DE PRÉ-VISUALIZAÇÃO DE DOCUMENTO (UI MOCK)                          */}
       {/* ========================================================================= */}
       {previewDoc && (
-        <div className="fixed inset-0 z-50 bg-inverse-surface/60 backdrop-blur-sm flex items-center justify-center p-space-md sm:p-space-xl overflow-y-auto animate-fade-in">
+        <div className="fixed inset-0 z-[70] bg-inverse-surface/60 backdrop-blur-sm flex items-center justify-center p-space-md sm:p-space-xl overflow-y-auto animate-fade-in">
           <div className="bg-surface-container-lowest w-full max-w-3xl rounded-xl shadow-2xl overflow-hidden my-auto flex flex-col border border-outline-variant/30">
             {/* Header do Modal */}
             <div className="h-14 px-space-lg bg-primary text-surface flex items-center justify-between shrink-0">
@@ -3568,7 +3590,7 @@ export const FichaCobrancaView: React.FC<FichaCobrancaViewProps> = ({
       {/* MODAL: ANEXAR / SUBSTITUIR DOCUMENTO À COBRANÇA                           */}
       {/* ========================================================================= */}
       {isAttachModalOpen && (
-        <div className="fixed inset-0 z-50 bg-inverse-surface/60 backdrop-blur-sm flex items-center justify-center p-space-md sm:p-space-xl overflow-y-auto animate-fade-in">
+        <div className="fixed inset-0 z-[70] bg-inverse-surface/60 backdrop-blur-sm flex items-center justify-center p-space-md sm:p-space-xl overflow-y-auto animate-fade-in">
           <div className="bg-surface-container-lowest w-full max-w-xl rounded-xl shadow-2xl overflow-hidden my-auto flex flex-col border border-outline-variant/30">
             {/* Header do Modal */}
             <div className="h-16 px-space-lg bg-primary text-surface flex items-center justify-between shrink-0">
@@ -3854,7 +3876,7 @@ export const FichaCobrancaView: React.FC<FichaCobrancaViewProps> = ({
       {/* MODAL: CONFIRMAÇÃO DE EXCLUSÃO DE DOCUMENTO                               */}
       {/* ========================================================================= */}
       {deletingDoc && (
-        <div className="fixed inset-0 z-50 bg-inverse-surface/60 backdrop-blur-sm flex items-center justify-center p-space-md overflow-y-auto animate-fade-in">
+        <div className="fixed inset-0 z-[70] bg-inverse-surface/60 backdrop-blur-sm flex items-center justify-center p-space-md overflow-y-auto animate-fade-in">
           <div className="bg-surface-container-lowest w-full max-w-md rounded-xl shadow-2xl overflow-hidden my-auto flex flex-col border border-outline-variant/30">
             {/* Header e Conteúdo de Confirmação */}
             <div className="p-6 flex flex-col gap-4 text-on-surface">
@@ -3930,7 +3952,7 @@ export const FichaCobrancaView: React.FC<FichaCobrancaViewProps> = ({
       {/* MODAL: CONSOLIDAR COBRANÇAS EM ABERTO                                     */}
       {/* ========================================================================= */}
       {isConsolidateModalOpen && (
-        <div className="fixed inset-0 z-50 bg-inverse-surface/60 backdrop-blur-sm flex items-center justify-center p-space-md sm:p-space-xl overflow-y-auto animate-fade-in">
+        <div className="fixed inset-0 z-[70] bg-inverse-surface/60 backdrop-blur-sm flex items-center justify-center p-space-md sm:p-space-xl overflow-y-auto animate-fade-in">
           <div className="bg-surface-container-lowest w-full max-w-2xl rounded-xl shadow-2xl overflow-hidden my-auto flex flex-col border border-outline-variant/30">
             {/* Header do Modal */}
             <div className="h-16 px-space-lg bg-primary text-surface flex items-center justify-between shrink-0">
@@ -4288,7 +4310,7 @@ export const FichaCobrancaView: React.FC<FichaCobrancaViewProps> = ({
 
       {/* Floating notification */}
       {toastMsg && (
-        <div className="fixed bottom-6 right-6 bg-primary text-surface px-4 py-3 rounded-xl shadow-2xl flex items-center gap-2.5 z-50 animate-bounce text-xs font-medium border border-secondary">
+        <div className="fixed bottom-6 right-6 bg-primary text-surface px-4 py-3 rounded-xl shadow-2xl flex items-center gap-2.5 z-[80] animate-bounce text-xs font-medium border border-secondary">
           <span className="material-symbols-outlined text-secondary-fixed text-[20px]">
             check_circle
           </span>

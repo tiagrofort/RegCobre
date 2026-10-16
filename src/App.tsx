@@ -151,7 +151,7 @@ const MainAppContent: React.FC = () => {
           window.scrollTo({ top: 0, behavior: 'smooth' });
         }}
         portfolioCount={debts.length}
-        returnsCount={debts.filter((d) => !!d.nextReturn).length}
+        returnsCount={debtService.getScheduledReturnsForUser(currentUser).length}
         unworkedTodayCount={producao.pendentes}
         isCollapsed={isSidebarCollapsed}
         onToggleCollapse={handleToggleSidebar}

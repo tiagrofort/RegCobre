@@ -14,6 +14,7 @@ import {
   Empresa,
   ModoCarteiraEmpresa,
 } from '../types';
+import { parseDateString } from '../utils/dateUtils';
 
 // Initial Mock Debtors (focused strictly on collection with phones)
 const INITIAL_DEBTORS: Debtor[] = [
@@ -1297,7 +1298,17 @@ const INITIAL_DEBTS: Debt[] = [
         notes: 'Promessa de R$ 38.400 não cumprida em 03/11.',
       },
     ],
-    scheduledReturns: [],
+    scheduledReturns: [
+      {
+        id: 'sr-bn-1',
+        debtId: '09871',
+        date: '2024-11-05',
+        time: '14:00',
+        reason: 'Repactuação urgente - Reacionar devedor.',
+        responsibleName: 'Carlos Eduardo',
+        status: 'Agendado',
+      },
+    ],
     payments: [],
     history: [
       {
@@ -1426,7 +1437,17 @@ const INITIAL_DEBTS: Debt[] = [
         notes: 'Acordo firmado via WhatsApp.',
       },
     ],
-    scheduledReturns: [],
+    scheduledReturns: [
+      {
+        id: 'sr-rsp-1',
+        debtId: '10304',
+        date: '2024-11-06',
+        time: '10:00',
+        reason: 'Acompanhar pagamento via PIX.',
+        responsibleName: 'Carlos Eduardo',
+        status: 'Agendado',
+      },
+    ],
     payments: [],
     history: [
       {
@@ -2194,6 +2215,77 @@ export const debtService = {
       });
     }
     return [...agendaState];
+  },
+
+  /**
+   * Retorna todos os agendamentos individuais de retorno respeitando o acesso do usuário
+   * Deduplica retornos idênticos entre scheduledReturns e nextReturn, preservando múltiplos retornos da mesma cobrança.
+   */
+  getScheduledReturnsForUser(
+    user?: User | null
+  ): { debt: Debt; returnItem: ScheduledReturnRecord }[] {
+    const debts = this.getDebtsForUser(user);
+    const results: { debt: Debt; returnItem: ScheduledReturnRecord }[] = [];
+
+    debts.forEach((debt) => {
+      const addedKeys = new Set<string>();
+
+      // 1. Considera cada registro de scheduledReturns individualmente
+      (debt.scheduledReturns || []).forEach((sr) => {
+        const normDate = (sr.date || '').trim();
+        const normTime = (sr.time || '').trim();
+        const key = `${normDate}|${normTime}|${sr.reason}`;
+        if (!addedKeys.has(key)) {
+          addedKeys.add(key);
+          results.push({ debt, returnItem: sr });
+        }
+      });
+
+      // 2. Se nextReturn existir e ainda não estiver representado, inclui sem duplicar
+      if (debt.nextReturn) {
+        const nrDate = (debt.nextReturn.date || '').trim();
+        const nrTime = (debt.nextReturn.time || '').trim();
+        const key = `${nrDate}|${nrTime}|${debt.nextReturn.reason}`;
+
+        let found = addedKeys.has(key);
+        if (!found) {
+          const parsedNrDate = parseDateString(nrDate);
+          if (parsedNrDate) {
+            for (const existingKey of addedKeys) {
+              const [exDate, exTime, exReason] = existingKey.split('|');
+              const parsedEx = parseDateString(exDate);
+              if (
+                parsedEx &&
+                parsedEx.getTime() === parsedNrDate.getTime() &&
+                exTime === nrTime &&
+                exReason === debt.nextReturn.reason
+              ) {
+                found = true;
+                break;
+              }
+            }
+          }
+        }
+
+        if (!found) {
+          addedKeys.add(key);
+          results.push({
+            debt,
+            returnItem: {
+              id: `sr-next-${debt.id}`,
+              debtId: debt.id,
+              date: debt.nextReturn.date,
+              time: debt.nextReturn.time,
+              reason: debt.nextReturn.reason,
+              responsibleName: debt.nextReturn.assignedToName || debt.assignedTo.name,
+              status: 'Agendado',
+            },
+          });
+        }
+      }
+    });
+
+    return results;
   },
 
   /**
