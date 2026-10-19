@@ -4,6 +4,8 @@ import { debtService } from '../services/debtService';
 import { Debt } from '../types';
 import { PdfPreviewModal } from '../components/PdfPreviewModal';
 import { getDebtStatusRowClass, getDebtStatusRowStyle } from '../utils/debtStatusStyles';
+import { exportToCsv } from '../utils/csvExporter';
+import { formatDateISO } from '../utils/dateUtils';
 
 interface ConferenciaViewProps {
   onSelectDebt: (debtId: string) => void;
@@ -42,6 +44,32 @@ export const ConferenciaView: React.FC<ConferenciaViewProps> = ({ onSelectDebt }
     setChannelFilter('Todos os Canais');
     setSearchQuery('');
     setPeriodPreset('mes');
+  };
+
+  const handleExportCsv = () => {
+    const todayIso = formatDateISO(new Date());
+    const ok = exportToCsv({
+      filename: `regcobre_auditoria_conferencia_${todayIso}`,
+      columns: [
+        { header: 'Devedor', accessor: (d) => d.debtorName },
+        { header: 'CNPJ/CPF', accessor: (d) => d.debtorCnpjCpf },
+        { header: 'Título', accessor: (d) => d.titleNumber },
+        { header: 'Parcela', accessor: (d) => d.installment },
+        { header: 'Valor Atual (R$)', accessor: (d) => d.currentValue, type: 'currency' },
+        { header: 'Vencimento', accessor: (d) => d.dueDate, type: 'date' },
+        { header: 'Atraso (dias)', accessor: (d) => d.daysOverdue, type: 'number' },
+        { header: 'Situação / Status', accessor: (d) => d.statusLabel },
+        { header: 'Responsável', accessor: (d) => d.assignedTo.name },
+        { header: 'Último Contato Data', accessor: (d) => d.lastContact?.date || '' },
+        { header: 'Último Contato Canal', accessor: (d) => d.lastContact?.channel || '' },
+        { header: 'Último Contato Resultado', accessor: (d) => d.lastContact?.result || '' },
+        { header: 'Último Operador', accessor: (d) => d.lastContact?.operatorName || '' },
+      ],
+      data: filteredDebts,
+    });
+    if (ok) {
+      showToast('Planilha de auditoria exportada com sucesso (formato CSV/Excel).');
+    }
   };
 
   return (
@@ -107,7 +135,8 @@ export const ConferenciaView: React.FC<ConferenciaViewProps> = ({ onSelectDebt }
             <button
               className="h-8 px-space-md rounded-lg bg-secondary-container text-on-secondary-container hover:bg-secondary-fixed-dim transition-colors font-body-sm text-body-sm font-semibold flex items-center gap-1.5 shadow-sm cursor-pointer"
               type="button"
-              onClick={() => showToast('Planilha Excel de Auditoria exportada com sucesso.')}
+              onClick={handleExportCsv}
+              title="Exportar planilha formatada para Excel"
             >
               <span className="material-symbols-outlined text-[16px]">table_view</span>
               <span>Exportar Excel</span>
@@ -116,7 +145,8 @@ export const ConferenciaView: React.FC<ConferenciaViewProps> = ({ onSelectDebt }
             <button
               className="h-8 px-space-md rounded-lg bg-surface-container-low text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors font-body-sm text-body-sm font-medium flex items-center gap-1.5 shadow-sm cursor-pointer border border-outline-variant/30"
               type="button"
-              onClick={() => showToast('Arquivo CSV consolidado gerado.')}
+              onClick={handleExportCsv}
+              title="Exportar arquivo CSV com UTF-8 BOM"
             >
               <span className="material-symbols-outlined text-[16px]">file_download</span>
               <span>CSV</span>

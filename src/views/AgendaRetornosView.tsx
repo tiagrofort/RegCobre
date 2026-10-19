@@ -24,7 +24,7 @@ export const AgendaRetornosView: React.FC<AgendaRetornosViewProps> = ({
   const [toastMsg, setToastMsg] = useState<string | null>(null);
 
   // Inscrição reativa aos eventos do debtService para atualização em tempo real
-  const [, setTick] = useState(0);
+  const [tick, setTick] = useState(0);
   useEffect(() => {
     return debtService.subscribe(() => {
       setTick((t) => t + 1);
@@ -38,7 +38,7 @@ export const AgendaRetornosView: React.FC<AgendaRetornosViewProps> = ({
 
   // Data operacional de referência (e.g. '04/11/2024') e data real do sistema
   const opDateStr = debtService.getCurrentDate();
-  const refDate = useMemo(() => parseDateString(opDateStr) || new Date(), [opDateStr]);
+  const refDate = useMemo(() => parseDateString(opDateStr) || new Date(), [opDateStr, tick]);
   const realToday = useMemo(() => new Date(), []);
 
   // Rótulo dinâmico do botão "Hoje", calculado a partir da data de operação
@@ -51,7 +51,7 @@ export const AgendaRetornosView: React.FC<AgendaRetornosViewProps> = ({
   // Recupera todos os agendamentos individuais de retorno do usuário
   const allScheduledReturns = useMemo(() => {
     return debtService.getScheduledReturnsForUser(currentUser);
-  }, [currentUser, setTick]);
+  }, [currentUser, tick]);
 
   // Filtra os retornos de acordo com o filtro selecionado (Hoje, Próximos 7 Dias, Todos)
   const filteredReturns = useMemo(() => {

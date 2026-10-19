@@ -11,6 +11,7 @@ export type NavScreen =
   | 'base-de-devedores'
   | 'conferencia-de-cobrancas'
   | 'dashboard-gerencial'
+  | 'relatorios'
   | 'importar-erp'
   | 'empresas'
   | 'usuarios'
@@ -417,6 +418,40 @@ export const Sidebar: React.FC<SidebarProps> = ({
                   <div className="flex items-center gap-space-sm">
                     <span className="material-symbols-outlined text-[18px]">monitoring</span>
                     <span>Dashboard Gerencial</span>
+                  </div>
+                )}
+              </button>
+
+              {/* Relatórios Gerenciais */}
+              <button
+                onClick={() => onNavigate('relatorios')}
+                aria-label="Relatórios Gerenciais"
+                title={isCollapsed ? 'Relatórios Gerenciais' : undefined}
+                className={`rounded-lg transition-colors cursor-pointer group relative ${
+                  isCollapsed
+                    ? `w-12 h-11 mx-auto flex items-center justify-center ${
+                        currentScreen === 'relatorios'
+                          ? 'bg-primary text-surface font-semibold shadow-xs'
+                          : 'text-on-primary-container hover:bg-primary hover:text-surface'
+                      }`
+                    : `flex items-center justify-between px-space-sm py-space-xs font-body-md text-body-md text-left ${
+                        currentScreen === 'relatorios'
+                          ? 'bg-primary text-surface font-semibold shadow-xs'
+                          : 'text-on-primary-container hover:bg-primary hover:text-surface'
+                      }`
+                }`}
+              >
+                {isCollapsed ? (
+                  <>
+                    <span className="material-symbols-outlined text-[20px]">summarize</span>
+                    <div className="absolute left-full ml-3 px-3 py-1.5 bg-primary text-surface text-xs font-medium rounded-lg shadow-xl opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity whitespace-nowrap z-50 border border-primary/40">
+                      <span>Relatórios Gerenciais</span>
+                    </div>
+                  </>
+                ) : (
+                  <div className="flex items-center gap-space-sm">
+                    <span className="material-symbols-outlined text-[18px]">summarize</span>
+                    <span>Relatórios Gerenciais</span>
                   </div>
                 )}
               </button>

@@ -76,3 +76,51 @@ export function getShortMonthName(monthIndex: number): string {
   const months = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
   return months[monthIndex] || '';
 }
+
+/**
+ * Retorna o início (segunda-feira 00:00:00) e fim (domingo 23:59:59) da semana para uma data de referência
+ */
+export function getWeekRange(referenceDate: Date): { start: Date; end: Date } {
+  const d = new Date(referenceDate);
+  const day = d.getDay();
+  // Se domingo (0), ajusta para 7 para que a semana comece na segunda-feira
+  const diffToMonday = d.getDate() - (day === 0 ? 6 : day - 1);
+  const start = new Date(d.getFullYear(), d.getMonth(), diffToMonday, 0, 0, 0, 0);
+  const end = new Date(start.getFullYear(), start.getMonth(), start.getDate() + 6, 23, 59, 59, 999);
+  return { start, end };
+}
+
+/**
+ * Retorna o primeiro e o último dia do mês para uma data de referência
+ */
+export function getMonthRange(referenceDate: Date): { start: Date; end: Date } {
+  const start = new Date(referenceDate.getFullYear(), referenceDate.getMonth(), 1, 0, 0, 0, 0);
+  const end = new Date(referenceDate.getFullYear(), referenceDate.getMonth() + 1, 0, 23, 59, 59, 999);
+  return { start, end };
+}
+
+/**
+ * Verifica se uma data qualquer está dentro do intervalo [start, end] inclusive
+ */
+export function isDateInRange(
+  targetDate?: string | Date | null,
+  startDate?: Date | null,
+  endDate?: Date | null
+): boolean {
+  if (!targetDate || !startDate || !endDate) return false;
+  const d = typeof targetDate === 'string' ? parseDateString(targetDate) : targetDate;
+  if (!d || isNaN(d.getTime())) return false;
+  const time = d.getTime();
+  const startTime = new Date(startDate.getFullYear(), startDate.getMonth(), startDate.getDate(), 0, 0, 0, 0).getTime();
+  const endTime = new Date(endDate.getFullYear(), endDate.getMonth(), endDate.getDate(), 23, 59, 59, 999).getTime();
+  return time >= startTime && time <= endTime;
+}
+
+/**
+ * Formata um valor numérico em moeda brasileira (R$ X.XXX,XX)
+ */
+export function formatCurrencyBR(value: number): string {
+  if (typeof value !== 'number' || isNaN(value)) return 'R$ 0,00';
+  return value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+}
+

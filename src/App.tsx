@@ -13,6 +13,7 @@ import { ConferenciaView } from './views/ConferenciaView';
 import { DashboardGerencialView } from './views/DashboardGerencialView';
 import { AgendaRetornosView } from './views/AgendaRetornosView';
 import { RelatorioDiarioView } from './views/RelatorioDiarioView';
+import { RelatoriosView } from './views/RelatoriosView';
 import { ImportarErpView } from './views/ImportarErpView';
 import { EmpresasView } from './views/EmpresasView';
 import { UsuariosView } from './views/UsuariosView';
@@ -242,6 +243,14 @@ const MainAppContent: React.FC = () => {
             <DashboardGerencialView
               onSelectDebt={handleSelectDebtAndOpenFicha}
               onNavigateToConferencia={() => setCurrentScreen('conferencia-de-cobrancas')}
+              onNavigateToRelatorios={() => setCurrentScreen('relatorios')}
+            />
+          )}
+
+          {currentScreen === 'relatorios' && (
+            <RelatoriosView
+              onSelectDebt={handleSelectDebtAndOpenFicha}
+              onNavigateToDashboard={() => setCurrentScreen('dashboard-gerencial')}
             />
           )}
 
