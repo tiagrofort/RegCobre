@@ -50,7 +50,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
     <aside
       className={`fixed left-0 top-0 h-full ${
         isCollapsed ? 'w-20' : 'w-64'
-      } bg-primary-container z-50 flex flex-col justify-between shadow-[0_1px_8px_rgba(0,0,0,0.04)] select-none transition-[width] duration-300 ease-in-out`}
+      } bg-primary-container z-50 flex flex-col justify-between shadow-[0_1px_8px_rgba(0,0,0,0.04)] select-none transition-[width] duration-300 ease-in-out print:hidden`}
     >
       <div className="flex flex-col min-h-0 flex-1 overflow-y-auto overflow-x-hidden">
         {/* Brand Header with Toggle Button */}

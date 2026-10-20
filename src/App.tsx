@@ -275,36 +275,39 @@ const MainAppContent: React.FC = () => {
         </main>
       </div>
 
-      {/* Slide-over Drawer for Fast Contact Registration */}
-      <FastLogDrawer
-        isOpen={isFastLogDrawerOpen}
-        debt={fastLogTargetDebt || currentFichaDebt}
-        onClose={() => setIsFastLogDrawerOpen(false)}
-        onSaved={handleFastLogSaved}
-        onOpenFicha={handleSelectDebtAndOpenFicha}
-      />
+      {/* Overlays e Notificações Globais (Ocultos na Impressão/PDF) */}
+      <div className="print:hidden">
+        {/* Slide-over Drawer for Fast Contact Registration */}
+        <FastLogDrawer
+          isOpen={isFastLogDrawerOpen}
+          debt={fastLogTargetDebt || currentFichaDebt}
+          onClose={() => setIsFastLogDrawerOpen(false)}
+          onSaved={handleFastLogSaved}
+          onOpenFicha={handleSelectDebtAndOpenFicha}
+        />
 
-      {/* Modal de Encerramento do Dia (FINISH) */}
-      <FinishDayModal
-        isOpen={isFinishModalOpen}
-        onClose={() => setIsFinishModalOpen(false)}
-        onFinished={handleDayFinished}
-      />
+        {/* Modal de Encerramento do Dia (FINISH) */}
+        <FinishDayModal
+          isOpen={isFinishModalOpen}
+          onClose={() => setIsFinishModalOpen(false)}
+          onFinished={handleDayFinished}
+        />
 
-      {/* Floating notification for day closure */}
-      {finishToast && (
-        <div className="fixed bottom-6 right-6 bg-primary text-surface px-5 py-3 rounded-xl shadow-2xl flex items-center gap-3 z-50 animate-bounce text-sm font-medium border border-secondary">
-          <span className="material-symbols-outlined text-secondary-fixed text-[24px]">
-            verified
-          </span>
-          <div>
-            <strong className="block text-secondary-fixed font-bold text-xs uppercase font-label-uppercase">
-              Agenda do Dia Atualizada
-            </strong>
-            <span>{finishToast.message}</span>
+        {/* Floating notification for day closure */}
+        {finishToast && (
+          <div className="fixed bottom-6 right-6 bg-primary text-surface px-5 py-3 rounded-xl shadow-2xl flex items-center gap-3 z-50 animate-bounce text-sm font-medium border border-secondary">
+            <span className="material-symbols-outlined text-secondary-fixed text-[24px]">
+              verified
+            </span>
+            <div>
+              <strong className="block text-secondary-fixed font-bold text-xs uppercase font-label-uppercase">
+                Agenda do Dia Atualizada
+              </strong>
+              <span>{finishToast.message}</span>
+            </div>
           </div>
-        </div>
-      )}
+        )}
+      </div>
     </div>
   );
 };

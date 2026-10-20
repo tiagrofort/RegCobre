@@ -744,9 +744,11 @@ export const RelatoriosView: React.FC<RelatoriosViewProps> = ({
   ]);
 
   return (
-    <div className="p-space-lg lg:p-space-xl flex flex-col gap-space-lg max-w-[1720px] mx-auto w-full pb-16">
-      {/* 1. Header da Central de Relatórios */}
-      <div className="bg-surface-container-lowest rounded-xl p-space-lg shadow-sm flex flex-col xl:flex-row xl:items-center justify-between gap-space-md border border-outline-variant/30">
+    <div className="p-space-lg lg:p-space-xl flex flex-col gap-space-lg max-w-[1720px] mx-auto w-full pb-16 print:p-0 print:m-0 print:gap-0 print:pb-0 print:max-w-none">
+      {/* Conteúdo Interativo da Tela da Central (Oculto estritamente na Impressão/PDF) */}
+      <div className="flex flex-col gap-space-lg print:hidden">
+        {/* 1. Header da Central de Relatórios */}
+        <div className="bg-surface-container-lowest rounded-xl p-space-lg shadow-sm flex flex-col xl:flex-row xl:items-center justify-between gap-space-md border border-outline-variant/30">
         <div>
           <div className="flex items-center gap-2">
             <span className="material-symbols-outlined text-primary text-[26px]">summarize</span>
@@ -1357,6 +1359,7 @@ export const RelatoriosView: React.FC<RelatoriosViewProps> = ({
           </div>
         )}
       </div>
+      </div>
 
       {/* 6. Modal Oficial de Visualização A4 / PDF (Fase 5) */}
       <ReportViewerModal
@@ -1371,11 +1374,12 @@ export const RelatoriosView: React.FC<RelatoriosViewProps> = ({
         data={modalConfig.data}
         totalsRow={modalConfig.totalsRow}
         onExportCsv={handleExportCsv}
+        empresaName={empresaFilter !== 'all' ? empresaMap.get(empresaFilter) : undefined}
       />
 
       {/* Toast de Feedback */}
       {toastMsg && (
-        <div className="fixed bottom-6 right-6 bg-primary text-surface px-4 py-2.5 rounded-lg shadow-2xl flex items-center gap-2 z-50 animate-bounce text-xs font-medium">
+        <div className="fixed bottom-6 right-6 bg-primary text-surface px-4 py-2.5 rounded-lg shadow-2xl flex items-center gap-2 z-50 animate-bounce text-xs font-medium print:hidden">
           <span className="material-symbols-outlined text-secondary-fixed text-[18px]">
             check_circle
           </span>
